@@ -58,7 +58,7 @@ backup/*
 # Logs and cache
 log
 cache
-
+data/
 .vscode/
 *.db
 
