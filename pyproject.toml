@@ -1,0 +1,52 @@
+[project]
+name = "snapbot"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [{ name = "tropical-algae", email = "tropicalalgae@gmail.com" }]
+requires-python = ">=3.13"
+dependencies = [
+  "aiosqlite>=0.22.1",
+  "copilotkit>=0.1.94",
+  "deepagents>=0.6.10",
+  "langchain>=1.3.9",
+  "langchain-openai>=1.3.2",
+  "langgraph>=1.2.5",
+  "langgraph-checkpoint-sqlite>=3.1.0",
+  "loguru>=0.7.3",
+  "ncatbot5>=5.5.6",
+  "pydantic-settings>=2.14.2",
+  "tavily>=1.1.0",
+]
+
+[dependency-groups]
+dev = [
+  "coverage>=7.14.1",
+  "langgraph-cli[inmem]>=0.4.30",
+  "mypy>=2.1.0",
+  "poethepoet>=0.46.0",
+  "pre-commit>=4.6.0",
+  "pytest>=9.1.0",
+  "pytest-asyncio>=1.4.0",
+  "pytest-cov>=7.1.0",
+  "pytest-env>=1.6.0",
+  "pytest-recording>=0.13.4",
+  "ruff>=0.15.17",
+  "types-pytz>=2026.2.0.20260518",
+  "types-pyyaml>=6.0.12.20260518",
+]
+
+
+[project.scripts]
+snapbot = "snapbot:main"
+
+[build-system]
+requires = ["uv_build>=0.11.21,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+default-groups = ["dev"]
+
+[[tool.uv.index]]
+name = "proxy-source"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
