@@ -1,0 +1,9 @@
+name = "snapbot_plugin"
+version = "0.1.0"
+main = "plugin.py"
+author = "root"
+description = "SnapBot Agent for QQ"
+entry_class = "SnapBotPlugin"
+pip_dependencies = []
+
+[dependencies]
