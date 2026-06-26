@@ -2,13 +2,15 @@ from ncatbot.core import registrar
 from ncatbot.event.qq import GroupMessageEvent, PrivateMessageEvent
 from ncatbot.plugin import NcatBotPlugin
 
+from snapbot.core.agent.executor import AgentExecutor
 from snapbot.core.agent.models import AgentRuntimeConfig
-from snapbot.core.agent.registry.agent import AgentRegistry
+from snapbot.core.agent.registry import AgentRegistry
 
 
 class SnapBotPlugin(NcatBotPlugin):
     async def on_load(self) -> None:
         self.agent_registry = AgentRegistry()
+        self.agent_executor = AgentExecutor()
         await self.agent_registry.setup()
 
         self.set_config("prefix", "/")
@@ -27,21 +29,22 @@ class SnapBotPlugin(NcatBotPlugin):
         bot_info = await self.api.qq.query.get_login_info()
         at = [a for a in event.message.filter_at() if a.user_id == bot_info.user_id]
         if self.agent_registry and len(at) > 0:
-            config = AgentRuntimeConfig(thread_id=self.build_session_id(event))
+            thread_id = self.build_session_id(event)
+            config = AgentRuntimeConfig(thread_id=thread_id, user_id=str(event.user_id))
             message: str = "\n".join(msg.text for msg in event.message.filter_text())
-            message = message.lstrip("小鱼").lstrip()
-            async for text in self.agent_registry.astream_agent_events(config, message):
-                # await event.reply(text=text)
+            agent = await self.agent_registry.get_agent(thread_id=thread_id)
+            async for text in self.agent_executor.astream_agent_events(agent, config, message):
                 await self.api.qq.post_group_msg(event.group_id, text=text)
 
     @registrar.on_group_command("小鱼")
     async def on_group_chat(self, event: GroupMessageEvent) -> None:
         if self.agent_registry:
-            config = AgentRuntimeConfig(thread_id=self.build_session_id(event))
+            thread_id = self.build_session_id(event)
+            config = AgentRuntimeConfig(thread_id=thread_id, user_id=str(event.user_id))
             message: str = "\n".join(msg.text for msg in event.message.filter_text())
             message = message.lstrip("小鱼").lstrip()
-            async for text in self.agent_registry.astream_agent_events(config, message):
-                # await event.reply(text=text)
+            agent = await self.agent_registry.get_agent(thread_id=thread_id)
+            async for text in self.agent_executor.astream_agent_events(agent, config, message):
                 await self.api.qq.post_group_msg(event.group_id, text=text)
 
     @registrar.on_group_command("重置记忆")
