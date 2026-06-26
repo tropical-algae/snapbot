@@ -4,7 +4,7 @@ from langchain_core.tools import BaseTool
 
 from snapbot.common.utils.decorator import TOOL_META_ATTR
 from snapbot.common.utils.packages import iter_builtin_tools
-from snapbot.core.agent.models import AgentName
+from snapbot.core.agent.models import SubAgentName
 from snapbot.core.tools.models import ToolMeta
 
 BUILTIN_TOOLS_PACKAGE = "snapbot.core.tools.builtin"
@@ -14,8 +14,8 @@ class ToolRegistry:
     def __init__(self):
         tools, disabled_tools = self.get_all_builtin_tools()
 
-        self.tools: dict[AgentName, list[BaseTool]] = tools
-        self.disabled_tools: dict[AgentName, list[BaseTool]] = disabled_tools
+        self.tools: dict[SubAgentName, list[BaseTool]] = tools
+        self.disabled_tools: dict[SubAgentName, list[BaseTool]] = disabled_tools
 
     @staticmethod
     def get_tool_meta(tool: object) -> ToolMeta | None:
@@ -26,9 +26,9 @@ class ToolRegistry:
 
     def get_all_builtin_tools(
         self,
-    ) -> tuple[dict[AgentName, list[BaseTool]], dict[AgentName, list[BaseTool]]]:
-        tools: dict[AgentName, list[BaseTool]] = defaultdict(list)
-        disabled_tools: dict[AgentName, list[BaseTool]] = defaultdict(list)
+    ) -> tuple[dict[SubAgentName, list[BaseTool]], dict[SubAgentName, list[BaseTool]]]:
+        tools: dict[SubAgentName, list[BaseTool]] = defaultdict(list)
+        disabled_tools: dict[SubAgentName, list[BaseTool]] = defaultdict(list)
 
         for tool in iter_builtin_tools(BUILTIN_TOOLS_PACKAGE):
             meta = self.get_tool_meta(tool)
@@ -47,7 +47,7 @@ class ToolRegistry:
 
     def get_tools(
         self,
-        agent_name: AgentName,
+        agent_name: SubAgentName,
         *,
         include_disabled: bool = False,
     ) -> list[BaseTool]:

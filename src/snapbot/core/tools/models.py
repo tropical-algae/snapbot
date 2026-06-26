@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
-from snapbot.core.agent.models import AgentName
+from snapbot.core.agent.models import SubAgentName
 
 
 @dataclass(frozen=True)
 class ToolMeta:
-    belong: frozenset[AgentName]
+    belong: frozenset[SubAgentName]
     enabled: bool = True
