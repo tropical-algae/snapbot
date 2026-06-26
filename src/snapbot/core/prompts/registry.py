@@ -1,40 +1,50 @@
+from pathlib import Path
 from typing import Any
 
 from snapbot.common.configs import settings
 from snapbot.common.logging import logger
 from snapbot.common.utils.file import read_file
-from snapbot.core.agent.models import AgentName
-from snapbot.core.prompts.models import PromptMeta
-
-content = read_file(settings.SNAPAGENT_PROMPT_FILEPATH)
+from snapbot.core.agent.models import RootAgentName, SubAgentName
 
 
 class PromptRegistry:
     def __init__(self):
-        self.mapping: dict[AgentName, PromptMeta] = {
-            AgentName.SNAPAGENT: PromptMeta(
-                system_prompt=read_file(settings.SNAPAGENT_PROMPT_FILEPATH),
-            ),
-            AgentName.SEARCHAGENT: PromptMeta(
-                system_prompt=read_file(settings.SEARCHAGENT_PROMPT_FILEPATH),
-                description=read_file(settings.SEARCHAGENT_DESC_FILEPATH),
-            ),
-        }
+        prompt_path = Path(settings.PROMPT_PATH)
+
+        self.system_prompt_path: Path = prompt_path / settings.SYSTEM_PROMPT_DIR
+        self.desc_prompt_path: Path = prompt_path / settings.DESCRIPTION_DIR
+
+        self.cache: dict[str, str] = {}
+
         logger.info("Prompt has been registered")
 
-    def _get_prompt_meta(self, agent_name: AgentName) -> PromptMeta:
-        prompt: PromptMeta | None = self.mapping.get(agent_name)
+    def get_system_prompt(
+        self, agent_name: RootAgentName | SubAgentName, use_cache: bool = True, **kwargs: Any
+    ) -> str:
+        filepath = self.system_prompt_path / f"{agent_name.value}.md"
+        prompt = self.cache.get(filepath) if use_cache else None
+
         if not prompt:
-            raise ValueError(f"The PromptMeta for {agent_name} is empty")
+            prompt = read_file(filepath, auto_create=True)
+            if use_cache:
+                self.cache[filepath] = prompt
+
+        return prompt.format(**kwargs)
+
+    def get_description(
+        self,
+        agent_name: RootAgentName | SubAgentName,
+        use_cache: bool = True,
+    ) -> str:
+        filepath = self.desc_prompt_path / f"{agent_name.value}.md"
+        prompt = self.cache.get(filepath) if use_cache else None
+
+        if not prompt:
+            prompt = read_file(filepath, auto_create=True)
+            if use_cache:
+                self.cache[filepath] = prompt
+
         return prompt
-
-    def get_system_prompt(self, agent_name: AgentName, **kwargs: Any) -> str:
-        payload: PromptMeta = self._get_prompt_meta(agent_name)
-        return payload.system_prompt.format(**kwargs)
-
-    def get_description(self, agent_name: AgentName) -> str:
-        payload: PromptMeta = self._get_prompt_meta(agent_name)
-        return payload.description
 
 
 prompt_registry = PromptRegistry()

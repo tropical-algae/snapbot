@@ -2,9 +2,10 @@ from pydantic_settings import BaseSettings
 
 
 class PromptSetting(BaseSettings):
-    # system prompt
-    SNAPAGENT_PROMPT_FILEPATH: str = "src/snapbot/core/prompts/system/snap-agent.md"
-    SEARCHAGENT_PROMPT_FILEPATH: str = "src/snapbot/core/prompts/system/search-agent.md"
+    PROMPT_PATH: str = "src/snapbot/core/prompts"
 
-    # description
-    SEARCHAGENT_DESC_FILEPATH: str = "src/snapbot/core/prompts/desc/search-agent.md"
+    SYSTEM_PROMPT_DIR: str = "system"
+    DESCRIPTION_DIR: str = "desc"
+    OTHER_PROMPT_DIR: str = "other"
+
+    MEMORY_FILENAME: str = "memory.md"
