@@ -21,7 +21,7 @@ class PromptRegistry:
     def get_system_prompt(
         self, agent_name: RootAgentName | SubAgentName, use_cache: bool = True, **kwargs: Any
     ) -> str:
-        filepath = self.system_prompt_path / f"{agent_name.value}.md"
+        filepath = str(self.system_prompt_path / f"{agent_name.value}.md")
         prompt = self.cache.get(filepath) if use_cache else None
 
         if not prompt:
@@ -36,7 +36,7 @@ class PromptRegistry:
         agent_name: RootAgentName | SubAgentName,
         use_cache: bool = True,
     ) -> str:
-        filepath = self.desc_prompt_path / f"{agent_name.value}.md"
+        filepath = str(self.desc_prompt_path / f"{agent_name.value}.md")
         prompt = self.cache.get(filepath) if use_cache else None
 
         if not prompt:

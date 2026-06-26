@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class RootAgentName(StrEnum):
-    SNAPAGENT = "snap-agent"
+    SNAPAGENT = "snap_agent"
 
 
 class SubAgentName(StrEnum):
