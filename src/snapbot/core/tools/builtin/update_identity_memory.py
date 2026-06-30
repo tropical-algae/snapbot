@@ -11,13 +11,13 @@ from snapbot.core.middleware.service import get_identity_memory_path, get_memory
 
 
 class UpdateIdentityMemoryInput(BaseModel):
-    content: str = Field(description="Full updated Markdown content for the user's identity memory.")
+    content: str = Field(description="Full Markdown content for the user's identity memory.")
 
 
 @tool_meta(SubAgentName.MEMORYAGENT)
 @tool(args_schema=UpdateIdentityMemoryInput)
 def update_identity_memory(content: str, config: RunnableConfig) -> dict[str, Any]:
-    """Update the current user's identity memory after reading and merging existing content."""
+    """Update the current user's identity memory."""
     _, user_id = get_memory_ids(config)
     path = get_identity_memory_path(user_id)
     old_content = read_file(path)

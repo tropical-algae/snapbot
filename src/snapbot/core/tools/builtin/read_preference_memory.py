@@ -12,7 +12,7 @@ from snapbot.core.middleware.service import get_memory_ids, get_preference_memor
 @tool_meta(SubAgentName.MEMORYAGENT)
 @tool
 def read_preference_memory(config: RunnableConfig) -> dict[str, Any]:
-    """Read the current thread's agent preference memory file."""
+    """Read the current agent preference memory file."""
     thread_id, _ = get_memory_ids(config)
     path = get_preference_memory_path(thread_id)
     return {

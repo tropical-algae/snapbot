@@ -24,6 +24,5 @@ When appropriate, you may:
 - answer the question directly;
 - summarize what you have done;
 - state assumptions or missing information;
-- suggest reasonable next steps.
 
 Avoid unnecessary sections if they do not add value.

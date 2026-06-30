@@ -1,1 +1,13 @@
-维护长期记忆的子代理。用于在用户表达长期偏好、身份信息、习惯，或对小鱼的角色、风格、行为规范提出长期要求时，读取现有记忆并合并更新对应的记忆文件。
+This tool maintains long-term memory.
+
+Use this tool whenever the user expresses information that is stable over time and may affect future conversations.
+
+This includes, but is not limited to:
+
+- user-side information such as identity, background, goals, habits, preferences, interests, or boundaries
+- agent-side settings such as role, persona, tone, style, naming, behavior rules, or workflow requirements
+- requests to revise, override, remove, or correct existing memories, preferences, or agent behavior
+
+Use this tool even if the user does not explicitly say “remember,” as long as the information is meant to remain useful beyond the current turn.
+
+Do not use this tool for one-time tasks, temporary context, ordinary small talk, or sensitive credentials.

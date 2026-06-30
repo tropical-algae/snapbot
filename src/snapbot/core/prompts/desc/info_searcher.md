@@ -1,4 +1,10 @@
-这是一个专注于联网数据检索的工具，能够提供以下功能：
+A tool for retrieving up-to-date or external information from the web.
 
-1. 关键词检索互联网信息
-1. 获取指定链接的信息
+Use this tool when the task requires internet search, current information, factual verification, or reading content from a specified URL.
+
+It can:
+
+- search the web by keywords
+- fetch and summarize information from specific links
+
+Do not use it for purely internal reasoning, rewriting, casual conversation, or tasks that can be answered without external information.

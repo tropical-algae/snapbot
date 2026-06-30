@@ -11,13 +11,13 @@ from snapbot.core.middleware.service import get_memory_ids, get_preference_memor
 
 
 class UpdatePreferenceMemoryInput(BaseModel):
-    content: str = Field(description="Full updated Markdown content for the current thread's agent preference memory.")
+    content: str = Field(description="Full Markdown content for the agent preference memory.")
 
 
 @tool_meta(SubAgentName.MEMORYAGENT)
 @tool(args_schema=UpdatePreferenceMemoryInput)
 def update_preference_memory(content: str, config: RunnableConfig) -> dict[str, Any]:
-    """Update the current thread's agent preference memory after reading and merging existing content."""
+    """Update the current agent preference memory."""
     thread_id, _ = get_memory_ids(config)
     path = get_preference_memory_path(thread_id)
     old_content = read_file(path)
