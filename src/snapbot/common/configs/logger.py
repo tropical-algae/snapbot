@@ -1,9 +1,9 @@
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel, Field
 
 
-class LoggerSetting(BaseSettings):
-    DEBUG: bool = False
-    LOG_PATH: str = "./logs"
-    LOG_LEVEL: str = "INFO"  # force to "DEBUG" if DEBUG == True
-    LOG_FILE_ENCODING: str = "utf-8"
-    LOG_CONSOLE_OUTPUT: bool = True
+class LoggerConfig(BaseModel):
+    debug: bool = Field(default=False)
+    root_path: str = Field(default="./logs")
+    level: str = Field(default="INFO")  # force to "DEBUG" if DEBUG == True
+    file_encoding: str = Field(default="utf-8")
+    console_output: bool = Field(default=True)

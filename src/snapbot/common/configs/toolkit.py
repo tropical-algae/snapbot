@@ -1,6 +1,5 @@
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel
 
 
-class ToolkitSetting(BaseSettings):
-    TAVILY_KEY: str
-    SQLITE_PATH: str = "data"
+class ToolkitConfig(BaseModel):
+    tavily_key: str

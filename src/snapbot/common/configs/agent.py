@@ -1,13 +1,14 @@
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel
 
 
-class AgentSetting(BaseSettings):
-    AGENT_MODEL_URL: str = ""
-    AGENT_MODEL_KEY: str = ""
-    AGENT_MODEL_PROVIDE: str = "openai"
-    AGENT_DEFAULT_MODEL: str = "gpt-5.4-nano"
-    AGENT_AVAILABLE_MODELS: list = [AGENT_DEFAULT_MODEL]
+class AgentConfig(BaseModel):
+    base_url: str = ""
+    api_key: str = ""
+    model_provide: str = "openai"
+    default_model: str = "gpt-5.4-nano"
+    available_models: list = [default_model]
 
-    AGENT_WORKSPACE_PATH: str = "data/agent"
-    IDENTITY_MEMORY_PATH: str = "data/memory/identity"
-    PREFERENCE_MEMORY_PATH: str = "data/memory/preference"
+    sqlite_path: str = "data/database"
+    workspace_path: str = "data/agent"
+    identity_memory_path: str = "data/memory/identity"
+    preference_memory_path: str = "data/memory/preference"

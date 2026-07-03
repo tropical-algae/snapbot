@@ -8,16 +8,15 @@ from loguru import logger
 from snapbot.common.configs import settings
 
 ORIGIN_LOGGER_NAMES = ["uvicorn.asgi", "uvicorn.access", "uvicorn"]
-ORIGIN_LOGGER_NAMES += ["sqlalchemy.engine", "sqlalchemy.engine.Engine"] if settings.DEBUG else []
+ORIGIN_LOGGER_NAMES += ["sqlalchemy.engine", "sqlalchemy.engine.Engine"] if settings.log.debug else []
 
-
-log_filepath = Path(settings.LOG_PATH) / f"{settings.PROJECT_NAME}.log"
+log_filepath = Path(settings.log.root_path) / f"{settings.project_name}.log"
 log_filepath.parent.mkdir(parents=True, exist_ok=True)
 
 logger.remove()
 logger.add(
     sys.stdout,
-    level=settings.LOG_LEVEL if not settings.DEBUG else "DEBUG",
+    level=settings.log.level if not settings.log.debug else "DEBUG",
     colorize=True,
     format="<green>{time:YYYYMMDD HH:mm:ss}</green> | "
     "{process.name} | "
@@ -28,14 +27,14 @@ logger.add(
     "<level>{message}</level>",
 )
 
-if settings.LOG_CONSOLE_OUTPUT:
+if settings.log.console_output:
     logger.add(
         log_filepath,
         format="{time:YYYYMMDD HH:mm:ss} - "
         "{process.name} | "
         "{thread.name} | "
         "{module}.{function}:{line} - {level} -{message}",
-        encoding=settings.LOG_FILE_ENCODING,
+        encoding=settings.log.file_encoding,
         retention="12 week",
         rotation="1 week",
         compression="zip",
@@ -64,9 +63,9 @@ def intercept_std_logging() -> None:
                 record.getMessage(),
             )
 
-    logging.basicConfig(handlers=[InterceptHandler()], level=settings.LOG_LEVEL)
+    logging.basicConfig(handlers=[InterceptHandler()], level=settings.log.level)
     logging.getLogger().handlers = [InterceptHandler()]
     for logger_name in ORIGIN_LOGGER_NAMES:
         logging_logger = logging.getLogger(logger_name)
         logging_logger.handlers = [InterceptHandler()]
-        logging_logger.setLevel(settings.LOG_LEVEL)
+        logging_logger.setLevel(settings.log.level)

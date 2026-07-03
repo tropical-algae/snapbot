@@ -42,7 +42,7 @@ class AgentRegistry:
         self._register_models()
         self._register_sub_agents()
 
-        sqlite_path = Path(settings.SQLITE_PATH)
+        sqlite_path = Path(settings.agent.sqlite_path)
         await sqlite_path.mkdir(parents=True, exist_ok=True)
 
         for agent_name in RootAgentName:
@@ -62,16 +62,16 @@ class AgentRegistry:
     def _register_models(
         self,
     ) -> None:
-        if settings.AGENT_DEFAULT_MODEL not in settings.AGENT_AVAILABLE_MODELS:
-            settings.AGENT_AVAILABLE_MODELS.append(settings.AGENT_DEFAULT_MODEL)
+        if settings.agent.default_model not in settings.agent.available_models:
+            settings.agent.available_models.append(settings.agent.default_model)
 
-        available_models = set(settings.AGENT_AVAILABLE_MODELS)
+        available_models = set(settings.agent.available_models)
         self.models = {
             model: init_chat_model(
                 model=model,
-                model_provider=settings.AGENT_MODEL_PROVIDE,
-                api_key=settings.AGENT_MODEL_KEY,
-                base_url=settings.AGENT_MODEL_URL,
+                model_provider=settings.agent.model_provide,
+                api_key=settings.agent.api_key,
+                base_url=settings.agent.base_url,
             )
             for model in available_models
         }
@@ -97,11 +97,11 @@ class AgentRegistry:
                 f"Can not get checkpoint for {agent_name}, call AgentRegistry.setup() before get_agent()"
             )
 
-        model = self.models.get(settings.AGENT_DEFAULT_MODEL)
+        model = self.models.get(settings.agent.default_model)
         if not model:
-            raise ValueError(f"Default model {settings.AGENT_DEFAULT_MODEL} was not registered")
+            raise ValueError(f"Default model {settings.agent.default_model} was not registered")
 
-        root_dir = Path(settings.AGENT_WORKSPACE_PATH) / thread_id
+        root_dir = Path(settings.agent.workspace_path) / thread_id
         await (root_dir / "skills").mkdir(parents=True, exist_ok=True)
 
         return create_deep_agent(
@@ -121,7 +121,7 @@ class AgentRegistry:
 
     async def remove_agent(self, thread_id: str, agent_names: list[RootAgentName] | None = None) -> None:
         agent_names = list(RootAgentName) if agent_names is None else agent_names
-        root_dir = Path(settings.AGENT_WORKSPACE_PATH) / thread_id
+        root_dir = Path(settings.agent.workspace_path) / thread_id
         agents = self.agents.get(thread_id, {})
 
         for agent_name in agent_names:

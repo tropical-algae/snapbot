@@ -5,8 +5,8 @@ from langchain_core.runnables import RunnableConfig
 from snapbot.common.configs import settings
 from snapbot.common.utils.file import read_file, sanitize_identifier
 
-IDENTITY_MEMORY_PATH: Path = Path(settings.IDENTITY_MEMORY_PATH)
-PREFERENCE_MEMORY_PATH: Path = Path(settings.PREFERENCE_MEMORY_PATH)
+IDENTITY_MEMORY_PATH: Path = Path(settings.agent.identity_memory_path)
+PREFERENCE_MEMORY_PATH: Path = Path(settings.agent.preference_memory_path)
 MEMORY_TEMPLATE_PROMPT_FILEPATH: Path = Path("src/snapbot/core/prompts/other/memory.md")
 
 

@@ -9,10 +9,10 @@ from snapbot.core.agent.models import RootAgentName, SubAgentName
 
 class PromptRegistry:
     def __init__(self):
-        prompt_path = Path(settings.PROMPT_PATH)
+        prompt_path = Path(settings.prompt.root_path)
 
-        self.system_prompt_path: Path = prompt_path / settings.SYSTEM_PROMPT_DIR
-        self.desc_prompt_path: Path = prompt_path / settings.DESCRIPTION_DIR
+        self.system_prompt_path: Path = prompt_path / settings.prompt.system_prompt_path
+        self.desc_prompt_path: Path = prompt_path / settings.prompt.description_path
 
         self.cache: dict[str, str] = {}
 

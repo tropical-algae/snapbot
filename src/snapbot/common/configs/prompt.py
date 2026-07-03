@@ -1,11 +1,11 @@
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel
 
 
-class PromptSetting(BaseSettings):
-    PROMPT_PATH: str = "src/snapbot/core/prompts"
+class PromptConfig(BaseModel):
+    root_path: str = "src/snapbot/core/prompts"
 
-    SYSTEM_PROMPT_DIR: str = "system"
-    DESCRIPTION_DIR: str = "desc"
-    OTHER_PROMPT_DIR: str = "other"
+    system_prompt_path: str = "system"
+    description_path: str = "desc"
+    other_prompt_path: str = "other"
 
-    MEMORY_FILENAME: str = "memory.md"
+    memory_filename: str = "memory.md"
