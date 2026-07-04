@@ -1,9 +1,8 @@
 from typing import Any, Literal
 
-from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
-from snapbot.common.utils.decorator import tool_meta
+from snapbot.common.utils.decorator import snap_tool
 from snapbot.core.agent.models import SubAgentName
 from snapbot.core.toolkits import tavily_client
 
@@ -23,8 +22,7 @@ class WebSearchInput(BaseModel):
     )
 
 
-@tool_meta(SubAgentName.SEARCHAGENT)
-@tool(args_schema=WebSearchInput)
+@snap_tool(SubAgentName.SEARCHAGENT, args_schema=WebSearchInput)
 def web_search(
     query: str,
     max_results: int = 5,

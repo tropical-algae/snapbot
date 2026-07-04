@@ -21,6 +21,7 @@ from snapbot.core.agent.models import (
     ToolStartStreamEvent,
 )
 from snapbot.core.agent.service import build_user_message_payload, get_agent_approval_requests, get_agent_interrupt
+from snapbot.core.tools.registry import tool_registry
 
 
 class AgentExecutor:
@@ -125,7 +126,12 @@ class AgentExecutor:
                         metadata=metadata,
                     )
                 else:
-                    yield ToolStartStreamEvent(name=tool_name, args=tool_args, metadata=metadata)
+                    yield ToolStartStreamEvent(
+                        name=tool_name,
+                        args=tool_args,
+                        action_message=tool_registry.get_action_message(tool_name),
+                        metadata=metadata,
+                    )
 
             elif kind == "on_tool_end":
                 tool_name = event["name"]

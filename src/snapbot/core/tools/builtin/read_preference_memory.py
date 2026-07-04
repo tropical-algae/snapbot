@@ -1,16 +1,14 @@
 from typing import Any
 
 from langchain_core.runnables import RunnableConfig
-from langchain_core.tools import tool
 
-from snapbot.common.utils.decorator import tool_meta
+from snapbot.common.utils.decorator import snap_tool
 from snapbot.common.utils.file import read_file
 from snapbot.core.agent.models import SubAgentName
 from snapbot.core.middleware.service import get_memory_ids, get_preference_memory_path
 
 
-@tool_meta(SubAgentName.MEMORYAGENT)
-@tool
+@snap_tool(SubAgentName.MEMORYAGENT)
 def read_preference_memory(config: RunnableConfig) -> dict[str, Any]:
     """Read the current agent preference memory file."""
     thread_id, _ = get_memory_ids(config)

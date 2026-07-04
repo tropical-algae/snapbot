@@ -84,6 +84,7 @@ class ToolStartStreamEvent(AgentStreamEvent):
     type: AgentStreamEventType = AgentStreamEventType.TOOL_START
     name: str = ""
     args: dict[str, Any] = field(default_factory=dict)
+    action_message: str | None = None
 
 
 @dataclass(frozen=True)
