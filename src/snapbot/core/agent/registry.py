@@ -100,11 +100,13 @@ class AgentRegistry:
         if not model:
             raise ValueError(f"Default model {settings.agent.default_model} was not registered")
 
+        tools = tool_registry.get_tools(agent_name)
         root_dir = Path(settings.agent.workspace_path) / thread_id
         await (root_dir / "skills").mkdir(parents=True, exist_ok=True)
 
         return create_deep_agent(
             model=model,
+            tools=tools or None,
             subagents=self.subagents,
             system_prompt=prompt_registry.get_system_prompt(agent_name),
             middleware=[cast(AgentMiddleware[Any, Any, Any], FileMemoryMiddleware())],

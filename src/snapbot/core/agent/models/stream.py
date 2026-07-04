@@ -3,6 +3,7 @@ from enum import StrEnum
 from typing import Any
 
 from snapbot.core.agent.models.approval import ApprovalRequest
+from snapbot.core.tools.models import ToolArtifact
 
 
 class AgentStreamEventType(StrEnum):
@@ -93,6 +94,7 @@ class ToolEndStreamEvent(AgentStreamEvent):
     name: str = ""
     args: dict[str, Any] = field(default_factory=dict)
     output: Any | None = None
+    artifacts: list[ToolArtifact] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

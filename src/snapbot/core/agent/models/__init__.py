@@ -1,4 +1,4 @@
-from snapbot.core.agent.models.agent import AgentRuntimeConfig, RootAgentName, SubAgentName
+from snapbot.core.agent.models.agent import AgentName, AgentRuntimeConfig, RootAgentName, SubAgentName
 from snapbot.core.agent.models.approval import ApprovalRequest, ApprovalStatus
 from snapbot.core.agent.models.stream import (
     AgentStreamEvent,
@@ -16,6 +16,7 @@ from snapbot.core.agent.models.stream import (
 )
 
 __all__ = [
+    "AgentName",
     "AgentRuntimeConfig",
     "AgentStreamEvent",
     "AgentStreamEventType",

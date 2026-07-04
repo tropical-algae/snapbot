@@ -1,6 +1,7 @@
 from collections.abc import AsyncGenerator, Iterator
 from typing import Any
 
+from langchain.messages import ToolMessage
 from langgraph.graph.state import Command, CompiledStateGraph
 
 from snapbot.core.agent.models import (
@@ -21,6 +22,7 @@ from snapbot.core.agent.models import (
     ToolStartStreamEvent,
 )
 from snapbot.core.agent.service import build_user_message_payload, get_agent_approval_requests, get_agent_interrupt
+from snapbot.core.tools.models import ToolArtifactOutput
 from snapbot.core.tools.registry import tool_registry
 
 
@@ -136,19 +138,23 @@ class AgentExecutor:
             elif kind == "on_tool_end":
                 tool_name = event["name"]
                 tool_args = self._normalize_tool_args(data.get("input"))
+                tool_output: ToolMessage = data.get("output")
+
                 if tool_name == "task":
                     yield TaskEndStreamEvent(
                         description=str(tool_args.get("description", "")),
                         subagent_type=str(tool_args.get("subagent_type", "")),
-                        output=data.get("output"),
+                        output=tool_output,
                         metadata=metadata,
                     )
                 else:
+                    artifact: ToolArtifactOutput | None = tool_output.artifact
                     yield ToolEndStreamEvent(
                         name=tool_name,
                         args=tool_args,
-                        output=data.get("output"),
+                        output=tool_output,
                         metadata=metadata,
+                        artifacts=[] if artifact is None else artifact.artifacts,
                     )
 
             elif kind == "on_tool_error":

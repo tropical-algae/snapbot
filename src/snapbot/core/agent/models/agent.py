@@ -4,11 +4,15 @@ from langchain_core.runnables.config import RunnableConfig
 from pydantic import BaseModel, ConfigDict
 
 
-class RootAgentName(StrEnum):
+class AgentName(StrEnum):
+    pass
+
+
+class RootAgentName(AgentName):
     SNAPAGENT = "snap_agent"
 
 
-class SubAgentName(StrEnum):
+class SubAgentName(AgentName):
     SEARCHAGENT = "info_searcher"
     MEMORYAGENT = "memory_manager"
 
