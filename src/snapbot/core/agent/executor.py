@@ -1,8 +1,25 @@
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Iterator
+from typing import Any
 
 from langgraph.graph.state import Command, CompiledStateGraph
 
-from snapbot.core.agent.models import AgentRuntimeConfig, ApprovalStatus
+from snapbot.core.agent.models import (
+    AgentRuntimeConfig,
+    AgentStreamEvent,
+    ApprovalPromptStreamEvent,
+    ApprovalRequest,
+    ApprovalStatus,
+    FinalTextStreamEvent,
+    IntermediateTextStreamEvent,
+    RootAgentName,
+    TaskEndStreamEvent,
+    TaskErrorStreamEvent,
+    TaskStartStreamEvent,
+    TextStreamEvent,
+    ToolEndStreamEvent,
+    ToolErrorStreamEvent,
+    ToolStartStreamEvent,
+)
 from snapbot.core.agent.service import build_user_message_payload, get_agent_approval_requests, get_agent_interrupt
 
 
@@ -17,52 +34,167 @@ class AgentExecutor:
             self.approval_status[thread_id] = approval_status
         return approval_status
 
+    @staticmethod
+    def _build_metadata(event: dict[str, Any]) -> dict[str, Any]:
+        metadata = event.get("metadata") or {}
+        return {
+            "name": event.get("name", ""),
+            "run_id": event.get("run_id", ""),
+            "parent_ids": event.get("parent_ids", []),
+            "tags": event.get("tags", []),
+            "langgraph_node": metadata.get("langgraph_node", ""),
+            "metadata": metadata,
+        }
+
+    @staticmethod
+    def _get_metadata_value(metadata: dict[str, Any], key: str) -> str:
+        value = metadata.get("metadata", {}).get(key, "")
+        return value if isinstance(value, str) else ""
+
+    @classmethod
+    def _get_agent_name(cls, metadata: dict[str, Any]) -> str:
+        return cls._get_metadata_value(metadata, "lc_agent_name")
+
+    @classmethod
+    def _build_text_event(cls, delta: str, metadata: dict[str, Any]) -> TextStreamEvent:
+        agent_name = cls._get_agent_name(metadata)
+        node = str(metadata.get("langgraph_node", ""))
+        payload = {
+            "delta": delta,
+            "agent_name": agent_name,
+            "node": node,
+            "metadata": metadata,
+        }
+        if agent_name in RootAgentName:
+            return FinalTextStreamEvent(**payload)
+        return IntermediateTextStreamEvent(**payload)
+
+    @staticmethod
+    def _normalize_tool_args(tool_input: Any) -> dict[str, Any]:
+        if isinstance(tool_input, dict):
+            return tool_input
+        if tool_input is None:
+            return {}
+        return {"input": tool_input}
+
+    @staticmethod
+    def _iter_content_chars(content: Any) -> Iterator[str]:
+        if isinstance(content, str):
+            yield from content
+            return
+
+        if not isinstance(content, list):
+            return
+
+        for item in content:
+            if isinstance(item, str):
+                yield from item
+            elif isinstance(item, dict):
+                text = item.get("text")
+                if isinstance(text, str):
+                    yield from text
+
+    @staticmethod
+    def _has_tool_call(chunk: Any) -> bool:
+        return bool(
+            getattr(chunk, "tool_calls", None)
+            or getattr(chunk, "tool_call_chunks", None)
+            or getattr(chunk, "invalid_tool_calls", None)
+        )
+
+    @staticmethod
+    def _iter_approval_prompt_events(approval: ApprovalRequest, prompt: str) -> Iterator[AgentStreamEvent]:
+        for char in prompt:
+            yield ApprovalPromptStreamEvent(delta=char, approval=approval)
+
     async def _astream_agent_events(
         self, agent: CompiledStateGraph, config: AgentRuntimeConfig, payload: dict | Command
-    ) -> AsyncGenerator[str, None]:
-        final_response = ""
+    ) -> AsyncGenerator[AgentStreamEvent, None]:
         async for event in agent.astream_events(payload, config=config.to_langgraph_config(), version="v2"):
             kind = event["event"]
+            data = event.get("data") or {}
+            metadata = self._build_metadata(event)
 
             if kind == "on_tool_start":
                 tool_name = event["name"]
-                tool_input: dict = event["data"].get("input", {})
+                tool_args = self._normalize_tool_args(data.get("input"))
                 if tool_name == "task":
-                    tool_desc = tool_input.get("description", "开始规划任务")
-                    yield tool_desc
-                # yield f"[Tool Call] {tool_name}\n  args: {tool_input}"
+                    yield TaskStartStreamEvent(
+                        description=str(tool_args.get("description", "")),
+                        subagent_type=str(tool_args.get("subagent_type", "")),
+                        metadata=metadata,
+                    )
+                else:
+                    yield ToolStartStreamEvent(name=tool_name, args=tool_args, metadata=metadata)
 
-            elif kind == "on_chat_model_end":
-                output_msg = event["data"].get("output")
+            elif kind == "on_tool_end":
+                tool_name = event["name"]
+                tool_args = self._normalize_tool_args(data.get("input"))
+                if tool_name == "task":
+                    yield TaskEndStreamEvent(
+                        description=str(tool_args.get("description", "")),
+                        subagent_type=str(tool_args.get("subagent_type", "")),
+                        output=data.get("output"),
+                        metadata=metadata,
+                    )
+                else:
+                    yield ToolEndStreamEvent(
+                        name=tool_name,
+                        args=tool_args,
+                        output=data.get("output"),
+                        metadata=metadata,
+                    )
 
-                if (
-                    output_msg
-                    and hasattr(output_msg, "content")
-                    and output_msg.content
-                    and not getattr(output_msg, "tool_calls", None)
-                ):
-                    final_response = output_msg.content
-        yield final_response
+            elif kind == "on_tool_error":
+                tool_name = event["name"]
+                tool_args = self._normalize_tool_args(data.get("input"))
+                error = str(data.get("error", ""))
+                if tool_name == "task":
+                    yield TaskErrorStreamEvent(
+                        description=str(tool_args.get("description", "")),
+                        subagent_type=str(tool_args.get("subagent_type", "")),
+                        error=error,
+                        metadata=metadata,
+                    )
+                else:
+                    yield ToolErrorStreamEvent(name=tool_name, args=tool_args, error=error, metadata=metadata)
+
+            elif kind == "on_chat_model_stream":
+                chunk = data.get("chunk")
+                if chunk is None or self._has_tool_call(chunk):
+                    continue
+
+                for char in self._iter_content_chars(getattr(chunk, "content", "")):
+                    yield self._build_text_event(char, metadata)
 
     async def astream_agent_events(
         self,
         agent: CompiledStateGraph,
         config: AgentRuntimeConfig,
         message: str,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[AgentStreamEvent, None]:
         thread_id = config.thread_id
         approval_status = self.get_approval_status(thread_id)
 
         payload: Command | dict = build_user_message_payload(message)
 
         if approval_status.is_opened:
-            decision_status = approval_status.set_next_decision(message)
+            decision = approval_status.resolve_next_decision(message)
 
-            if decision_status and not approval_status.is_opened:
+            if decision and not approval_status.is_opened:
                 payload = approval_status.get_approval_command()
 
             else:
-                yield (approval_status.get_next_approval_desc() or "Something is wrong here.")
+                next_approval = approval_status.get_next_approval()
+                if next_approval is None:
+                    return
+
+                prompt = approval_status.get_next_approval_desc() or "Something is wrong here."
+                if not decision:
+                    prompt = f"审批决策无效, 请重新选择.\n\n{prompt}"
+
+                for approval_event in self._iter_approval_prompt_events(next_approval, prompt):
+                    yield approval_event
                 return
 
         async for text in self._astream_agent_events(agent, config, payload):
@@ -71,6 +203,11 @@ class AgentExecutor:
         approval_requests = get_agent_approval_requests(await get_agent_interrupt(agent, config))
 
         if approval_requests:
-            approval_status.reflash(approval_requests)
+            approval_status.set_approvals(approval_requests)
+            next_approval = approval_status.get_next_approval()
+            if next_approval is None:
+                return
 
-            yield (approval_status.get_next_approval_desc() or "Something is wrong here.")
+            prompt = approval_status.get_next_approval_desc() or "Something is wrong here."
+            for approval_event in self._iter_approval_prompt_events(next_approval, prompt):
+                yield approval_event

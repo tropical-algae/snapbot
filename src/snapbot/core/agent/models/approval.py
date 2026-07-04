@@ -1,28 +1,6 @@
 from dataclasses import dataclass
-from enum import StrEnum
 
-from langchain_core.runnables.config import RunnableConfig
 from langgraph.types import Command
-from pydantic import BaseModel, ConfigDict
-
-
-class RootAgentName(StrEnum):
-    SNAPAGENT = "snap_agent"
-
-
-class SubAgentName(StrEnum):
-    SEARCHAGENT = "info_searcher"
-    MEMORYAGENT = "memory_manager"
-
-
-class AgentRuntimeConfig(BaseModel):
-    model_config = ConfigDict(extra="allow")
-
-    thread_id: str
-    user_id: str
-
-    def to_langgraph_config(self) -> RunnableConfig:
-        return RunnableConfig(configurable=self.model_dump())
 
 
 @dataclass(frozen=True)
@@ -39,9 +17,12 @@ class ApprovalStatus:
     approvals: list[ApprovalRequest]
     decisions: list[str]
 
-    def reflash(self, approvals: list[ApprovalRequest]) -> None:
+    def set_approvals(self, approvals: list[ApprovalRequest]) -> None:
         self.approvals = approvals
         self.decisions = []
+
+    def reflash(self, approvals: list[ApprovalRequest]) -> None:
+        self.set_approvals(approvals)
 
     @property
     def is_opened(self) -> bool:
@@ -70,20 +51,24 @@ class ApprovalStatus:
         Returns:
             bool: 决策是否不合法, 不合法则不予更新
         """
+        return self.resolve_next_decision(message) is not None
+
+    def resolve_next_decision(self, message: str) -> str | None:
         approval = self.get_next_approval()
         if approval is None:
-            return False
+            return None
 
+        message = message.strip()
         try:
             decision_index = int(message)
             decision = approval.allowed_decisions[decision_index]
             self.decisions.append(decision)
-            return True
+            return decision
         except (ValueError, IndexError):
             if message in approval.allowed_decisions:
                 self.decisions.append(message)
-                return True
-            return False
+                return message
+            return None
 
     def get_approval_command(self) -> Command:
         return Command(resume={"decisions": [{"type": decision} for decision in self.decisions]})

@@ -13,7 +13,7 @@ from langgraph.graph.state import CompiledStateGraph
 
 from snapbot.common.configs import settings
 from snapbot.common.logging import logger
-from snapbot.core.agent.models import ApprovalStatus, RootAgentName, SubAgentName
+from snapbot.core.agent.models import RootAgentName, SubAgentName
 from snapbot.core.middleware.memory import FileMemoryMiddleware
 from snapbot.core.middleware.service import get_preference_memory_path
 from snapbot.core.prompts.registry import prompt_registry
@@ -25,7 +25,6 @@ class AgentRegistry:
         self.models: dict[str, BaseChatModel] = {}
         self.agents: dict[str, dict[RootAgentName, CompiledStateGraph]] = defaultdict(dict)
         self.subagents: list[SubAgent] = []
-        self.approval_status: dict[str, ApprovalStatus] = {}
 
         self._checkpoint_conns: dict[RootAgentName, aiosqlite.Connection] = {}
         self._checkpointers: dict[RootAgentName, AsyncSqliteSaver] = {}
@@ -117,6 +116,7 @@ class AgentRegistry:
             checkpointer=checkpointer,
             backend=FilesystemBackend(root_dir=str(root_dir), virtual_mode=True),
             skills=["/skills/"],
+            name=agent_name.value,
         )
 
     async def remove_agent(self, thread_id: str, agent_names: list[RootAgentName] | None = None) -> None:
