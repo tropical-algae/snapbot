@@ -1,13 +1,11 @@
-This tool maintains long-term memory.
+This tool manages long-term memory about the user and the agent's behavior preferences.
 
-Use this tool whenever the user expresses information that is stable over time and may affect future conversations.
+Use this tool whenever the user asks to remember, save, note, update, revise, correct, or forget something.
 
-This includes, but is not limited to:
+Also use it when the user provides information that is likely to remain useful in future conversations, such as identity, background, goals, habits, preferences, interests, boundaries, communication style, or workflow requirements.
 
-- user-side information such as identity, background, goals, habits, preferences, interests, or boundaries
-- agent-side settings such as role, persona, tone, style, naming, behavior rules, or workflow requirements
-- requests to revise, override, remove, or correct existing memories, preferences, or agent behavior
+This includes both user-side information and agent-side preferences, such as role, persona, tone, response style, naming, behavior rules, or tool-use preferences.
 
-Use this tool even if the user does not explicitly say “remember,” as long as the information is meant to remain useful beyond the current turn.
+If the user says things like “remember that,” “from now on,” “in the future,” “以后,” “记住,” “不要再,” or “我的偏好是,” treat it as a strong signal to use this tool.
 
 Do not use this tool for one-time tasks, temporary context, ordinary small talk, or sensitive credentials.
