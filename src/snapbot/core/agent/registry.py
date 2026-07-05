@@ -68,7 +68,7 @@ class AgentRegistry:
         self.models = {
             model: init_chat_model(
                 model=model,
-                model_provider=settings.agent.model_provide,
+                model_provider=settings.agent.model_provider,
                 api_key=settings.agent.api_key,
                 base_url=settings.agent.base_url,
             )

@@ -1,14 +1,17 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+DEFAULT_MODEL = "gpt-5.4-nano"
 
 
 class AgentConfig(BaseModel):
-    base_url: str = ""
-    api_key: str = ""
-    model_provide: str = "openai"
-    default_model: str = "gpt-5.4-nano"
-    available_models: list = [default_model]
+    base_url: str = Field(default="")
+    api_key: str = Field(default="")
+    model_provider: str = Field(default="openai")
+    default_model: str = Field(default=DEFAULT_MODEL)
+    available_models: list[str] = Field(default_factory=lambda: [DEFAULT_MODEL])
 
-    sqlite_path: str = "data/database"
-    workspace_path: str = "data/agent"
-    identity_memory_path: str = "data/memory/identity"
-    preference_memory_path: str = "data/memory/preference"
+    cache_path: str = Field(default="data/cache")
+    sqlite_path: str = Field(default="data/database")
+    workspace_path: str = Field(default="data/agent")
+    identity_memory_path: str = Field(default="data/memory/identity")
+    preference_memory_path: str = Field(default="data/memory/preference")

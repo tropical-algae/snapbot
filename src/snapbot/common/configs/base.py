@@ -19,7 +19,7 @@ ENV_FILE = ".env"
 
 class Setting(BaseSettings):
     version: str = __version__
-    project_name: str = "snapbot"
+    project_name: str = Field(default="snapbot")
 
     log: LoggerConfig = Field(default_factory=LoggerConfig)
     toolkits: ToolkitConfig

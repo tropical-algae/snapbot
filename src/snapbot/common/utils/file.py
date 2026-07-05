@@ -1,5 +1,7 @@
 import re
+from datetime import datetime
 from pathlib import Path
+from uuid import uuid4
 
 from filelock import FileLock
 
@@ -31,3 +33,14 @@ def write_file(filepath: Path, content: str) -> None:
 def sanitize_identifier(identifier: str) -> str:
     cleaned = _IDENTIFIER_RE.sub("_", identifier.strip())
     return cleaned.strip("._-") or "unknown"
+
+
+def generate_timestamp_filename(ext: str | None = None) -> str:
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    short_uuid = uuid4().hex[:4].upper()
+
+    filename = f"{timestamp}_{short_uuid}"
+    if ext:
+        ext = ext.lstrip(".")
+        filename = f"{filename}.{ext}"
+    return filename
