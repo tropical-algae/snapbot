@@ -1,4 +1,3 @@
-import shutil
 from collections import defaultdict
 from typing import Any, cast
 
@@ -8,14 +7,16 @@ from deepagents import FilesystemPermission, SubAgent, create_deep_agent
 from deepagents.backends import FilesystemBackend
 from langchain.agents.middleware.types import AgentMiddleware
 from langchain.chat_models import BaseChatModel, init_chat_model
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
 
 from snapbot.common.configs import settings
 from snapbot.common.logging import logger
+from snapbot.common.model import ToolArtifactType
+from snapbot.common.utils.file import get_memory_workspace_path, remove_file
 from snapbot.core.agent.models import RootAgentName, SubAgentName
 from snapbot.core.middleware.memory import FileMemoryMiddleware
-from snapbot.core.middleware.service import get_preference_memory_path
 from snapbot.core.prompts.registry import prompt_registry
 from snapbot.core.tools.registry import tool_registry
 
@@ -39,7 +40,7 @@ class AgentRegistry:
     async def setup(self) -> None:
         logger.info("Setup agent registry.")
         self._register_models()
-        self._register_sub_agents()
+        await self._register_sub_agents()
 
         sqlite_path = Path(settings.agent.sqlite_path)
         await sqlite_path.mkdir(parents=True, exist_ok=True)
@@ -75,14 +76,14 @@ class AgentRegistry:
             for model in available_models
         }
 
-    def _register_sub_agents(
+    async def _register_sub_agents(
         self,
     ) -> None:
         subagents: list[SubAgent] = [
             SubAgent(
                 name=name,
-                description=prompt_registry.get_description(name),
-                system_prompt=prompt_registry.get_system_prompt(name),
+                description=await prompt_registry.get_description(name),
+                system_prompt=await prompt_registry.get_system_prompt(name),
                 tools=tool_registry.get_tools(name),
             )
             for name in SubAgentName
@@ -101,14 +102,15 @@ class AgentRegistry:
             raise ValueError(f"Default model {settings.agent.default_model} was not registered")
 
         tools = tool_registry.get_tools(agent_name)
-        root_dir = Path(settings.agent.workspace_path) / thread_id
-        await (root_dir / "skills").mkdir(parents=True, exist_ok=True)
+        backend_path = Path(settings.agent.backend_path) / thread_id
+        await (backend_path / "skills").mkdir(parents=True, exist_ok=True)
+        system_prompt = await prompt_registry.get_system_prompt(agent_name)
 
         return create_deep_agent(
             model=model,
             tools=tools or None,
             subagents=self.subagents,
-            system_prompt=prompt_registry.get_system_prompt(agent_name),
+            system_prompt=system_prompt,
             middleware=[cast(AgentMiddleware[Any, Any, Any], FileMemoryMiddleware())],
             permissions=[
                 FilesystemPermission(operations=["read"], paths=["/**"], mode="allow"),
@@ -116,28 +118,27 @@ class AgentRegistry:
                 FilesystemPermission(operations=["write"], paths=["/**"], mode="interrupt"),
             ],
             checkpointer=checkpointer,
-            backend=FilesystemBackend(root_dir=str(root_dir), virtual_mode=True),
+            backend=FilesystemBackend(root_dir=str(backend_path), virtual_mode=True),
             skills=["/skills/"],
             name=agent_name.value,
         )
 
     async def remove_agent(self, thread_id: str, agent_names: list[RootAgentName] | None = None) -> None:
-        agent_names = list(RootAgentName) if agent_names is None else agent_names
-        root_dir = Path(settings.agent.workspace_path) / thread_id
-        agents = self.agents.get(thread_id, {})
+        useless_paths: list[Path] = [
+            Path(settings.agent.backend_path) / thread_id,
+            await get_memory_workspace_path(
+                RunnableConfig(configurable={"thread_id": thread_id}), ToolArtifactType.PREFERENCE_MEMORY
+            ),
+        ]
+        for useless_path in useless_paths:
+            await remove_file(useless_path)
 
+        agent_names = list(RootAgentName) if agent_names is None else agent_names
+        agents = self.agents.get(thread_id, {})
         for agent_name in agent_names:
             agents.pop(agent_name, None)
-
-            if await root_dir.exists() and await root_dir.is_dir():
-                shutil.rmtree(root_dir)
-
             if checkpointer := self._checkpointers.get(agent_name):
                 await checkpointer.adelete_thread(thread_id)
-
-            preference_path = get_preference_memory_path(thread_id)
-            if preference_path.exists():
-                preference_path.unlink()
 
     async def get_agent(
         self, thread_id: str, agent_name: RootAgentName = RootAgentName.SNAPAGENT

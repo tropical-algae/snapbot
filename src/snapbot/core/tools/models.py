@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from snapbot.core.agent.models import AgentName
+from snapbot.core.agent.models.agent import AgentName
 
 
 @dataclass(frozen=True)

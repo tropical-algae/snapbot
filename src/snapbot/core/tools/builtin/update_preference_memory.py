@@ -3,10 +3,10 @@ from typing import Any
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
+from snapbot.common.model import ToolArtifactType
 from snapbot.common.utils.decorator import snap_tool
-from snapbot.common.utils.file import read_file, write_file
+from snapbot.common.utils.file import get_memory_workspace_path, read_file, write_file
 from snapbot.core.agent.models import SubAgentName
-from snapbot.core.middleware.service import get_memory_ids, get_preference_memory_path
 
 
 class UpdatePreferenceMemoryInput(BaseModel):
@@ -14,14 +14,13 @@ class UpdatePreferenceMemoryInput(BaseModel):
 
 
 @snap_tool(SubAgentName.MEMORYAGENT, args_schema=UpdatePreferenceMemoryInput)
-def update_preference_memory(content: str, config: RunnableConfig) -> dict[str, Any]:
+async def update_preference_memory(content: str, config: RunnableConfig) -> dict[str, Any]:
     """Update the current agent preference memory."""
-    thread_id, _ = get_memory_ids(config)
-    path = get_preference_memory_path(thread_id)
-    old_content = read_file(path)
-    write_file(path, content)
+    filepath = await get_memory_workspace_path(config, ToolArtifactType.PREFERENCE_MEMORY)
+    old_content = await read_file(filepath)
+    await write_file(filepath, content)
     return {
         "ok": True,
-        "path": str(path),
+        "path": str(filepath),
         "previous_empty": not bool(old_content),
     }

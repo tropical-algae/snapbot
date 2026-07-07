@@ -12,6 +12,6 @@ class AgentConfig(BaseModel):
 
     cache_path: str = Field(default="data/cache")
     sqlite_path: str = Field(default="data/database")
-    workspace_path: str = Field(default="data/agent")
+    backend_path: str = Field(default="data/agent")
     identity_memory_path: str = Field(default="data/memory/identity")
     preference_memory_path: str = Field(default="data/memory/preference")

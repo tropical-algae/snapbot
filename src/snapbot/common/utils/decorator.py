@@ -3,14 +3,13 @@ from typing import Any, get_args, get_origin, get_type_hints
 
 from langchain_core.tools import ArgsSchema, BaseTool, tool
 
-from snapbot.core.agent.models import RootAgentName, SubAgentName
-from snapbot.core.tools.models import ToolArtifactOutput, ToolMeta
+from snapbot.core.tools.models import AgentName, ToolArtifactOutput, ToolMeta
 
 TOOL_META_ATTR = "__tool_meta__"
 
 
 def snap_tool(
-    *belong: RootAgentName | SubAgentName,
+    *belong: AgentName,
     args_schema: ArgsSchema | None = None,
     action_message: str | None = None,
     enabled: bool = True,

@@ -14,32 +14,44 @@ from langchain.agents.middleware.types import (
 from langchain_core.messages import SystemMessage
 from langgraph.config import get_config
 
-from snapbot.core.middleware.service import build_memory_context, get_memory_ids
+from snapbot.common.configs import settings
+from snapbot.common.model import ToolArtifactType
+from snapbot.common.utils.file import get_memory_workspace_path, read_file
+from snapbot.core.prompts.registry import prompt_registry
 
 
 class FileMemoryMiddleware(AgentMiddleware[AgentState[Any], ContextT, ResponseT]):
-    def modify_request(self, request: ModelRequest[ContextT]) -> ModelRequest[ContextT]:
+    async def modify_request(self, request: ModelRequest[ContextT]) -> ModelRequest[ContextT]:
+        memory_context: str = ""
+        sections: list[str] = []
         config = get_config()
-        thread_id, user_id = get_memory_ids(config)
-        memory_context = build_memory_context(thread_id, user_id)
-        if not memory_context:
-            return request
 
-        base_content = request.system_message.text if request.system_message else ""
-        system_message = SystemMessage(content=f"{base_content}\n\n{memory_context}")
+        identity_memory = await read_file(
+            await get_memory_workspace_path(config, ToolArtifactType.IDENTITY_MEMORY), auto_create=True
+        )
+        preference_memory = await read_file(
+            await get_memory_workspace_path(config, ToolArtifactType.PREFERENCE_MEMORY), auto_create=True
+        )
+        context_template = await prompt_registry.get_other_prompt(settings.prompt.memory_filename)
 
-        return request.override(system_message=system_message)
+        if preference_memory:
+            sections.append(f"### Agent Preference\n{preference_memory}")
+        if identity_memory:
+            sections.append(f"### User Identity\n{identity_memory}")
 
-    def wrap_model_call(
-        self,
-        request: ModelRequest[ContextT],
-        handler: Callable[[ModelRequest[ContextT]], ModelResponse[ResponseT]],
-    ) -> ModelResponse[ResponseT]:
-        return handler(self.modify_request(request))
+        if len(sections) > 0:
+            payload = "\n\n".join(sections)
+            memory_context = context_template.format(memory=payload) if context_template else payload
+            base_content = request.system_message.text if request.system_message else ""
+            system_message = SystemMessage(content=f"{base_content}\n\n{memory_context}")
+            return request.override(system_message=system_message)
+
+        return request
 
     async def awrap_model_call(
         self,
         request: ModelRequest[ContextT],
         handler: Callable[[ModelRequest[ContextT]], Awaitable[ModelResponse[ResponseT]]],
     ) -> ModelResponse[ResponseT]:
-        return await handler(self.modify_request(request))
+        modified_request = await self.modify_request(request)
+        return await handler(modified_request)
