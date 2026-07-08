@@ -86,7 +86,7 @@ async def get_memory_workspace_path(
     return filepath
 
 
-async def get_tool_workspace_path(
+async def get_thread_workspace_path(
     config: RunnableConfig,
     artifact_type: Literal[ToolArtifactType.CACHE],
     subdir: str = "",

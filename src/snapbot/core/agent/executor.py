@@ -1,225 +1,129 @@
-from collections.abc import AsyncGenerator, Iterator
+from collections.abc import AsyncGenerator
 from typing import Any
+from uuid import uuid4
 
-from langchain.messages import ToolMessage
-from langgraph.graph.state import Command, CompiledStateGraph
+from ag_ui.core import (
+    CustomEvent,
+    Event,
+    EventType,
+    InputContent,
+    Interrupt,
+    ResumeEntry,
+    RunAgentInput,
+    RunFinishedEvent,
+    RunFinishedInterruptOutcome,
+    UserMessage,
+)
+from ag_ui_langgraph.types import LangGraphEventTypes
+from langgraph.graph.state import CompiledStateGraph
 
+from snapbot.core.agent.adapter import AGUIAgentAdapter
 from snapbot.core.agent.models import (
     AgentRuntimeConfig,
-    AgentStreamEvent,
-    ApprovalPromptStreamEvent,
-    ApprovalRequest,
-    ApprovalStatus,
-    FinalTextStreamEvent,
-    IntermediateTextStreamEvent,
     RootAgentName,
-    TaskEndStreamEvent,
-    TaskErrorStreamEvent,
-    TaskStartStreamEvent,
-    TextStreamEvent,
-    ToolEndStreamEvent,
-    ToolErrorStreamEvent,
-    ToolStartStreamEvent,
 )
-from snapbot.core.agent.service import build_user_message_payload, get_agent_approval_requests, get_agent_interrupt
-from snapbot.core.tools.models import ToolArtifactOutput
-from snapbot.core.tools.registry import tool_registry
+from snapbot.core.agent.models.event import InterruptPayload
 
 
-class AgentExecutor:
-    def __init__(self):
-        self.approval_status: dict[str, ApprovalStatus] = {}
+class AgentAGUIExecutor:
+    def __init__(self, name: str = RootAgentName.SNAPAGENT.value) -> None:
+        self.name = name
 
-    def get_approval_status(self, thread_id: str) -> ApprovalStatus:
-        approval_status = self.approval_status.get(thread_id)
-        if approval_status is None:
-            approval_status = ApprovalStatus(approvals=[], decisions=[])
-            self.approval_status[thread_id] = approval_status
-        return approval_status
-
-    @staticmethod
-    def _build_metadata(event: dict[str, Any]) -> dict[str, Any]:
-        metadata = event.get("metadata") or {}
-        return {
-            "name": event.get("name", ""),
-            "run_id": event.get("run_id", ""),
-            "parent_ids": event.get("parent_ids", []),
-            "tags": event.get("tags", []),
-            "langgraph_node": metadata.get("langgraph_node", ""),
-            "metadata": metadata,
-        }
-
-    @staticmethod
-    def _get_metadata_value(metadata: dict[str, Any], key: str) -> str:
-        value = metadata.get("metadata", {}).get(key, "")
-        return value if isinstance(value, str) else ""
-
-    @classmethod
-    def _get_agent_name(cls, metadata: dict[str, Any]) -> str:
-        return cls._get_metadata_value(metadata, "lc_agent_name")
-
-    @classmethod
-    def _build_text_event(cls, delta: str, metadata: dict[str, Any]) -> TextStreamEvent:
-        agent_name = cls._get_agent_name(metadata)
-        node = str(metadata.get("langgraph_node", ""))
-        payload = {
-            "delta": delta,
-            "agent_name": agent_name,
-            "node": node,
-            "metadata": metadata,
-        }
-        if agent_name in RootAgentName:
-            return FinalTextStreamEvent(**payload)
-        return IntermediateTextStreamEvent(**payload)
-
-    @staticmethod
-    def _normalize_tool_args(tool_input: Any) -> dict[str, Any]:
-        if isinstance(tool_input, dict):
-            return tool_input
-        if tool_input is None:
-            return {}
-        return {"input": tool_input}
-
-    @staticmethod
-    def _iter_content_chars(content: Any) -> Iterator[str]:
-        if isinstance(content, str):
-            yield from content
-            return
-
-        if not isinstance(content, list):
-            return
-
-        for item in content:
-            if isinstance(item, str):
-                yield from item
-            elif isinstance(item, dict):
-                text = item.get("text")
-                if isinstance(text, str):
-                    yield from text
-
-    @staticmethod
-    def _has_tool_call(chunk: Any) -> bool:
-        return bool(
-            getattr(chunk, "tool_calls", None)
-            or getattr(chunk, "tool_call_chunks", None)
-            or getattr(chunk, "invalid_tool_calls", None)
+    def build_agent(self, agent: CompiledStateGraph, config: AgentRuntimeConfig) -> AGUIAgentAdapter:
+        return AGUIAgentAdapter(
+            name=self.name,
+            graph=agent,
+            config=config.to_langgraph_config(),
         )
 
     @staticmethod
-    def _iter_approval_prompt_events(approval: ApprovalRequest, prompt: str) -> Iterator[AgentStreamEvent]:
-        for char in prompt:
-            yield ApprovalPromptStreamEvent(delta=char, approval=approval)
+    def _build_decision_resume_payload(resume: list[ResumeEntry]) -> dict[str, Any]:
+        decisions: list[dict[str, Any]] = []
+        for entry in resume:
+            if entry.status == "cancelled":
+                decisions.append({"type": "reject"})
+                continue
 
-    async def _astream_agent_events(
-        self, agent: CompiledStateGraph, config: AgentRuntimeConfig, payload: dict | Command
-    ) -> AsyncGenerator[AgentStreamEvent, None]:
-        async for event in agent.astream_events(payload, config=config.to_langgraph_config(), version="v2"):
-            kind = event["event"]
-            data = event.get("data") or {}
-            metadata = self._build_metadata(event)
+            payload = entry.payload
+            if isinstance(payload, dict):
+                decision = payload.get("decision") or payload.get("type")
+                if decision:
+                    item = {"type": decision}
+                    edited_args = payload.get("edited_args") or payload.get("editedArgs")
+                    if edited_args:
+                        item["edited_args"] = edited_args
+                    decisions.append(item)
 
-            if kind == "on_tool_start":
-                tool_name = event["name"]
-                tool_args = self._normalize_tool_args(data.get("input"))
-                if tool_name == "task":
-                    yield TaskStartStreamEvent(
-                        description=str(tool_args.get("description", "")),
-                        subagent_type=str(tool_args.get("subagent_type", "")),
-                        metadata=metadata,
-                    )
-                else:
-                    yield ToolStartStreamEvent(
-                        name=tool_name,
-                        args=tool_args,
-                        action_message=tool_registry.get_action_message(tool_name),
-                        metadata=metadata,
-                    )
+        return {"decisions": decisions}
 
-            elif kind == "on_tool_end":
-                tool_name = event["name"]
-                tool_args = self._normalize_tool_args(data.get("input"))
-                tool_output: ToolMessage = data.get("output")
+    @staticmethod
+    def _build_standard_interrupts(event: CustomEvent) -> list[Interrupt]:
+        return InterruptPayload.from_custom_event(event).to_agui_interrupts()
 
-                if tool_name == "task":
-                    yield TaskEndStreamEvent(
-                        description=str(tool_args.get("description", "")),
-                        subagent_type=str(tool_args.get("subagent_type", "")),
-                        output=tool_output,
-                        metadata=metadata,
-                    )
-                else:
-                    artifact: ToolArtifactOutput | None = tool_output.artifact
-                    yield ToolEndStreamEvent(
-                        name=tool_name,
-                        args=tool_args,
-                        output=tool_output,
-                        metadata=metadata,
-                        artifacts=[] if artifact is None else artifact.artifacts,
-                    )
+    @classmethod
+    def build_input(
+        cls,
+        config: AgentRuntimeConfig,
+        message: str | list[InputContent] | None = None,
+        resume: list[ResumeEntry] | None = None,
+        **kwargs: Any,
+    ) -> RunAgentInput:
+        forwarded_props: dict[str, Any] = {}
+        messages = []
+        state = kwargs.get("state", {})
+        tools = kwargs.get("tools", [])
+        context = kwargs.get("context", [])
 
-            elif kind == "on_tool_error":
-                tool_name = event["name"]
-                tool_args = self._normalize_tool_args(data.get("input"))
-                error = str(data.get("error", ""))
-                if tool_name == "task":
-                    yield TaskErrorStreamEvent(
-                        description=str(tool_args.get("description", "")),
-                        subagent_type=str(tool_args.get("subagent_type", "")),
-                        error=error,
-                        metadata=metadata,
-                    )
-                else:
-                    yield ToolErrorStreamEvent(name=tool_name, args=tool_args, error=error, metadata=metadata)
+        if resume:
+            forwarded_props["command"] = {
+                "resume": cls._build_decision_resume_payload(resume),
+            }
+        elif message is not None:
+            messages.append(
+                UserMessage(
+                    id=str(uuid4()),
+                    role="user",
+                    content=message,
+                )
+            )
 
-            elif kind == "on_chat_model_stream":
-                chunk = data.get("chunk")
-                if chunk is None or self._has_tool_call(chunk):
-                    continue
-
-                for char in self._iter_content_chars(getattr(chunk, "content", "")):
-                    yield self._build_text_event(char, metadata)
+        return RunAgentInput(
+            thread_id=config.thread_id,
+            run_id=str(uuid4()),
+            state=state,
+            messages=messages,
+            tools=tools,
+            context=context,
+            forwarded_props=forwarded_props,
+            resume=resume,
+        )
 
     async def astream_agent_events(
         self,
         agent: CompiledStateGraph,
         config: AgentRuntimeConfig,
-        message: str,
-    ) -> AsyncGenerator[AgentStreamEvent, None]:
-        thread_id = config.thread_id
-        approval_status = self.get_approval_status(thread_id)
+        message: str | list[InputContent] | None = None,
+        resume: list[ResumeEntry] | None = None,
+        **kwargs: Any,
+    ) -> AsyncGenerator[Event, None]:
+        agui_agent = self.build_agent(agent, config)
+        agui_input = self.build_input(config, message, resume, **kwargs)
+        pending_interrupts: list[Interrupt] = []
 
-        payload: Command | dict = build_user_message_payload(message)
+        async for event in agui_agent.run(agui_input):
+            if isinstance(event, CustomEvent) and event.name == LangGraphEventTypes.OnInterrupt.value:
+                pending_interrupts.extend(self._build_standard_interrupts(event))
+                continue
 
-        if approval_status.is_opened:
-            decision = approval_status.resolve_next_decision(message)
+            if isinstance(event, RunFinishedEvent) and pending_interrupts:
+                yield RunFinishedEvent(
+                    type=EventType.RUN_FINISHED,
+                    thread_id=event.thread_id,
+                    run_id=event.run_id,
+                    result=event.result,
+                    outcome=RunFinishedInterruptOutcome(interrupts=pending_interrupts),
+                    raw_event=event.raw_event,
+                )
+                continue
 
-            if decision and not approval_status.is_opened:
-                payload = approval_status.get_approval_command()
-
-            else:
-                next_approval = approval_status.get_next_approval()
-                if next_approval is None:
-                    return
-
-                prompt = approval_status.get_next_approval_desc() or "Something is wrong here."
-                if not decision:
-                    prompt = f"审批决策无效, 请重新选择.\n\n{prompt}"
-
-                for approval_event in self._iter_approval_prompt_events(next_approval, prompt):
-                    yield approval_event
-                return
-
-        async for text in self._astream_agent_events(agent, config, payload):
-            yield text
-
-        approval_requests = get_agent_approval_requests(await get_agent_interrupt(agent, config))
-
-        if approval_requests:
-            approval_status.set_approvals(approval_requests)
-            next_approval = approval_status.get_next_approval()
-            if next_approval is None:
-                return
-
-            prompt = approval_status.get_next_approval_desc() or "Something is wrong here."
-            for approval_event in self._iter_approval_prompt_events(next_approval, prompt):
-                yield approval_event
+            yield event

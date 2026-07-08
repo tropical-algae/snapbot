@@ -6,6 +6,8 @@ readme = "README.md"
 authors = [{ name = "tropical-algae", email = "tropicalalgae@gmail.com" }]
 requires-python = ">=3.13"
 dependencies = [
+  "ag-ui-langgraph>=0.0.41",
+  "ag-ui-protocol>=0.1.19",
   "aiosqlite>=0.22.1",
   "copilotkit>=0.1.94",
   "deepagents>=0.6.10",

@@ -2356,6 +2356,8 @@ name = "snapbot"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "ag-ui-langgraph" },
+    { name = "ag-ui-protocol" },
     { name = "aiosqlite" },
     { name = "copilotkit" },
     { name = "deepagents" },
@@ -2389,6 +2391,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ag-ui-langgraph", specifier = ">=0.0.41" },
+    { name = "ag-ui-protocol", specifier = ">=0.1.19" },
     { name = "aiosqlite", specifier = ">=0.22.1" },
     { name = "copilotkit", specifier = ">=0.1.94" },
     { name = "deepagents", specifier = ">=0.6.10" },
