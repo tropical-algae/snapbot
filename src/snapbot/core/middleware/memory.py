@@ -25,6 +25,8 @@ class FileMemoryMiddleware(AgentMiddleware[AgentState[Any], ContextT, ResponseT]
         memory_context: str = ""
         sections: list[str] = []
         config = get_config()
+        configurable = config.get("configurable", {})
+        user_id = str(configurable.get("user_id", None))
 
         identity_memory = await read_file(
             await get_memory_workspace_path(config, ToolArtifactType.IDENTITY_MEMORY), auto_create=True
@@ -35,9 +37,9 @@ class FileMemoryMiddleware(AgentMiddleware[AgentState[Any], ContextT, ResponseT]
         context_template = await prompt_registry.get_other_prompt(settings.prompt.memory_filename)
 
         if preference_memory:
-            sections.append(f"### Agent Preference\n{preference_memory}")
-        if identity_memory:
-            sections.append(f"### User Identity\n{identity_memory}")
+            sections.append(f"## Agent Preference\n{preference_memory}")
+        if user_id:
+            sections.append(f"## User Identity\n本次对话的用户ID: {user_id}\n{identity_memory}")
 
         if len(sections) > 0:
             payload = "\n\n".join(sections)

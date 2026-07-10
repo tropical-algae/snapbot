@@ -1,10 +1,13 @@
-A tool for retrieving up-to-date or external information from the web.
+一种从网络上检索最新信息或外部信息的代理
 
-Use this tool when the task requires internet search, current information, factual verification, or reading content from a specified URL.
+它可以：
 
-It can:
+- 根据关键词搜索互联网信息
+- 从特定链接获取信息并总结
 
-- search the web by keywords
-- fetch and summarize information from specific links
+适用场景：
 
-Do not use it for purely internal reasoning, rewriting, casual conversation, or tasks that can be answered without external information.
+- 需要互联网搜索
+- 获取最新信息
+- 核实事实
+- 从指定网址阅读内容

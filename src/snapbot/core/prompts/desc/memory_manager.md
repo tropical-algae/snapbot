@@ -1,11 +1,14 @@
-This tool manages long-term memory about the user and the agent's behavior preferences.
+一种管理用户身份和代理行为偏好的代理
 
-Use this tool whenever the user asks to remember, save, note, update, revise, correct, or forget something.
+它可以：
 
-Also use it when the user provides information that is likely to remain useful in future conversations, such as identity, background, goals, habits, preferences, interests, boundaries, communication style, or workflow requirements.
+- 读取用户的身份信息
+- 读取代理行为的偏好信息
+- 编写用户的身份信息
+- 编写代理行为的偏好信息
 
-This includes both user-side information and agent-side preferences, such as role, persona, tone, response style, naming, behavior rules, or tool-use preferences.
+适用场景：
 
-If the user says things like “remember that,” “from now on,” “in the future,” “以后,” “记住,” “不要再,” or “我的偏好是,” treat it as a strong signal to use this tool.
-
-Do not use this tool for one-time tasks, temporary context, ordinary small talk, or sensitive credentials.
+- 用户要求记住、保存、记录、更新、修改、更正或忘记某事
+- 用户的输入包含对代理行为的约束或要求
+- 用户的输入包含他的个人身份信息
