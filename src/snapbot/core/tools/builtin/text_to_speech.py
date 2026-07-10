@@ -18,7 +18,7 @@ class TextToSpeechInput(BaseModel):
     text: str = Field(description="Text to be converted to speech.")
 
 
-@snap_tool(RootAgentName.SNAPAGENT, args_schema=TextToSpeechInput, produces_artifacts=True)
+@snap_tool(RootAgentName.SNAP_AGENT, args_schema=TextToSpeechInput, produces_artifacts=True)
 async def text_to_speech(text: str, config: RunnableConfig) -> tuple[str, ToolArtifactOutput]:
     """Convert text into audio. When replying to users via voice, use this tool."""
     reqid = generate_timestamp_filename()

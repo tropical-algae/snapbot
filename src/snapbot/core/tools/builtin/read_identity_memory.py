@@ -8,7 +8,7 @@ from snapbot.common.utils.file import get_memory_workspace_path, read_file
 from snapbot.core.agent.models import SubAgentName
 
 
-@snap_tool(SubAgentName.MEMORYAGENT)
+@snap_tool(SubAgentName.MEMORY_MANAGER)
 async def read_identity_memory(config: RunnableConfig) -> dict[str, Any]:
     """Read the current user's identity memory file."""
     filepath = await get_memory_workspace_path(config, ToolArtifactType.IDENTITY_MEMORY)

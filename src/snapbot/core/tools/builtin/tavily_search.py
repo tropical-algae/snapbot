@@ -22,7 +22,7 @@ class WebSearchInput(BaseModel):
     )
 
 
-@snap_tool(SubAgentName.SEARCHAGENT, args_schema=WebSearchInput)
+@snap_tool(SubAgentName.INFO_SEARCHAGENT, args_schema=WebSearchInput)
 def web_search(
     query: str,
     max_results: int = 5,

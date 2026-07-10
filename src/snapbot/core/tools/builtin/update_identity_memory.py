@@ -13,7 +13,7 @@ class UpdateIdentityMemoryInput(BaseModel):
     content: str = Field(description="Full Markdown content for the user's identity memory.")
 
 
-@snap_tool(SubAgentName.MEMORYAGENT, args_schema=UpdateIdentityMemoryInput)
+@snap_tool(SubAgentName.MEMORY_MANAGER, args_schema=UpdateIdentityMemoryInput)
 async def update_identity_memory(content: str, config: RunnableConfig) -> dict[str, Any]:
     """Update the current user's identity memory."""
     filepath = await get_memory_workspace_path(config, ToolArtifactType.IDENTITY_MEMORY)

@@ -9,12 +9,13 @@ class AgentName(StrEnum):
 
 
 class RootAgentName(AgentName):
-    SNAPAGENT = "snap_agent"
+    SNAP_AGENT = "snap_agent"
 
 
 class SubAgentName(AgentName):
-    SEARCHAGENT = "info_searcher"
-    MEMORYAGENT = "memory_manager"
+    INFO_SEARCHAGENT = "info_searcher"
+    MEMORY_MANAGER = "memory_manager"
+    GROUP_OPERATOR = "group_operator"
 
 
 class AgentRuntimeConfig(BaseModel):

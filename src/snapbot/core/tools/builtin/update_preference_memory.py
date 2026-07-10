@@ -13,7 +13,7 @@ class UpdatePreferenceMemoryInput(BaseModel):
     content: str = Field(description="Full Markdown content for the agent preference memory.")
 
 
-@snap_tool(SubAgentName.MEMORYAGENT, args_schema=UpdatePreferenceMemoryInput)
+@snap_tool(SubAgentName.MEMORY_MANAGER, args_schema=UpdatePreferenceMemoryInput)
 async def update_preference_memory(content: str, config: RunnableConfig) -> dict[str, Any]:
     """Update the current agent preference memory."""
     filepath = await get_memory_workspace_path(config, ToolArtifactType.PREFERENCE_MEMORY)

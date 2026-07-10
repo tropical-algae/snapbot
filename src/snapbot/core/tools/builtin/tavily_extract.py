@@ -11,7 +11,7 @@ class WebExtractInput(BaseModel):
     url: str = Field(description="The URL requested by the user for retrieval")
 
 
-@snap_tool(SubAgentName.SEARCHAGENT, args_schema=WebExtractInput)
+@snap_tool(SubAgentName.INFO_SEARCHAGENT, args_schema=WebExtractInput)
 def web_extract(
     url: str,
 ) -> dict[str, Any]:
