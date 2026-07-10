@@ -141,7 +141,7 @@ class AgentRegistry:
                 await checkpointer.adelete_thread(thread_id)
 
     async def get_agent(
-        self, thread_id: str, agent_name: RootAgentName = RootAgentName.SNAPAGENT
+        self, thread_id: str, agent_name: RootAgentName = RootAgentName.SNAP_AGENT
     ) -> CompiledStateGraph:
         thread_agents = self.agents[thread_id]
         if agent_name not in thread_agents:
