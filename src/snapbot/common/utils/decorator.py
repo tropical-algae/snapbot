@@ -11,7 +11,6 @@ TOOL_META_ATTR = "__tool_meta__"
 def snap_tool(
     *belong: AgentName,
     args_schema: ArgsSchema | None = None,
-    action_message: str | None = None,
     enabled: bool = True,
     produces_artifacts: bool = False,
 ) -> Callable[[Callable[..., Any]], BaseTool]:
@@ -35,7 +34,6 @@ def snap_tool(
             TOOL_META_ATTR,
             ToolMeta(
                 belong=frozenset(belong),
-                action_message=action_message,
                 enabled=enabled,
             ),
         )

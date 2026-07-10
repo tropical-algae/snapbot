@@ -4,6 +4,7 @@ from langchain_core.tools import BaseTool
 
 from snapbot.common.configs import settings
 from snapbot.common.configs.tool import ToolConfig
+from snapbot.common.logging import logger
 from snapbot.common.utils.decorator import TOOL_META_ATTR
 from snapbot.common.utils.packages import iter_builtin_tools
 from snapbot.core.agent.models import AgentName
@@ -19,6 +20,7 @@ class ToolRegistry:
         self.tools: dict[AgentName, list[BaseTool]] = tools
         self.disabled_tools: dict[AgentName, list[BaseTool]] = disabled_tools
         self.tool_metas: dict[str, ToolMeta] = tool_metas
+        logger.info(tools)
 
     @staticmethod
     def _extract_tool_meta(tool: object) -> ToolMeta | None:
@@ -35,7 +37,6 @@ class ToolRegistry:
         cfg_meta = config.meta
         return ToolMeta(
             belong=cfg_meta.belong if len(cfg_meta.belong) > 0 else meta.belong,
-            action_message=cfg_meta.action_message or meta.action_message,
             enabled=cfg_meta.enabled if cfg_meta.enabled is not None else meta.enabled,
         )
 
@@ -79,12 +80,6 @@ class ToolRegistry:
             payload.extend(self.disabled_tools.get(agent_name, []))
 
         return payload
-
-    def get_action_message(self, tool_name: str) -> str | None:
-        meta = self.tool_metas.get(tool_name)
-        if meta is None or not meta.action_message:
-            return None
-        return meta.action_message
 
 
 tool_registry = ToolRegistry()

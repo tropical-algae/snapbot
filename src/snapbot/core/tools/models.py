@@ -10,7 +10,6 @@ from snapbot.core.agent.models.agent import AgentName
 @dataclass(frozen=True)
 class ToolMeta:
     belong: frozenset[AgentName] = field(default_factory=frozenset)
-    action_message: str | None = None
     enabled: bool | None = None
 
 
