@@ -12,6 +12,10 @@ from snapbot.common.configs import settings
 from snapbot.common.model import ToolArtifactType
 
 _IDENTIFIER_RE = re.compile(r"[^A-Za-z0-9_.-]+")
+_WORKSPACE_MAP = {
+    ToolArtifactType.CACHE: settings.agent.cache_path,
+    ToolArtifactType.HISTORY: settings.agent.history_path,
+}
 
 
 async def read_file(filepath: str | Path, auto_create: bool = False) -> str:
@@ -88,24 +92,25 @@ async def get_memory_workspace_path(
 
 async def get_thread_workspace_path(
     config: RunnableConfig,
-    artifact_type: Literal[ToolArtifactType.CACHE],
+    artifact_type: Literal[ToolArtifactType.CACHE, ToolArtifactType.HISTORY],
     subdir: str = "",
     filename: str | None = None,
     ext: str | None = None,
 ) -> Path:
+    filepath = _WORKSPACE_MAP.get(artifact_type)
+    if filepath is None:
+        raise RuntimeError(f"Wrong ToolArtifactType: {artifact_type}")
+
     configurable = config.get("configurable", {})
     thread_id = str(configurable.get("thread_id", "unknown_thread"))
 
-    if artifact_type == ToolArtifactType.CACHE:
-        filepath = Path(settings.agent.cache_path) / thread_id / subdir
-        await filepath.mkdir(parents=True, exist_ok=True)
+    workspace = Path(filepath) / thread_id / subdir
+    await workspace.mkdir(parents=True, exist_ok=True)
 
-        if filename:
-            if ext:
-                ext = ext.lstrip(".")
-                filename = f"{sanitize_identifier(filename)}.{ext}"
-            filepath = filepath / filename
+    if filename:
+        if ext:
+            ext = ext.lstrip(".")
+            filename = f"{sanitize_identifier(filename)}.{ext}"
+        workspace = workspace / filename
 
-        return filepath
-
-    raise RuntimeError(f"Wrong ToolArtifactType: {artifact_type}")
+    return workspace

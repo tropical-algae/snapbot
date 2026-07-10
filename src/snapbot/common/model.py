@@ -8,5 +8,6 @@ class LoggerBackend(StrEnum):
 
 class ToolArtifactType(StrEnum):
     CACHE = "cache"
+    HISTORY = "history"
     IDENTITY_MEMORY = "identity_memory"
     PREFERENCE_MEMORY = "preference_memory"

@@ -1,3 +1,4 @@
+import json
 from collections.abc import AsyncGenerator
 from typing import Any
 from uuid import uuid4
@@ -15,8 +16,13 @@ from ag_ui.core import (
     UserMessage,
 )
 from ag_ui_langgraph.types import LangGraphEventTypes
+from ag_ui_langgraph.utils import make_json_safe
 from langgraph.graph.state import CompiledStateGraph
 
+from snapbot.common.configs import settings
+from snapbot.common.logging import logger
+from snapbot.common.model import ToolArtifactType
+from snapbot.common.utils.file import generate_timestamp_filename, get_thread_workspace_path, write_file
 from snapbot.core.agent.adapter import AGUIAgentAdapter
 from snapbot.core.agent.models import (
     AgentRuntimeConfig,
@@ -24,9 +30,11 @@ from snapbot.core.agent.models import (
 )
 from snapbot.core.agent.models.event import InterruptPayload
 
+EVENT_HISTORY_SUBDIR = "agent_events"
+
 
 class AgentAGUIExecutor:
-    def __init__(self, name: str = RootAgentName.SNAPAGENT.value) -> None:
+    def __init__(self, name: str = RootAgentName.SNAP_AGENT.value) -> None:
         self.name = name
 
     def build_agent(self, agent: CompiledStateGraph, config: AgentRuntimeConfig) -> AGUIAgentAdapter:
@@ -59,6 +67,20 @@ class AgentAGUIExecutor:
     @staticmethod
     def _build_standard_interrupts(event: CustomEvent) -> list[Interrupt]:
         return InterruptPayload.from_custom_event(event).to_agui_interrupts()
+
+    @staticmethod
+    async def _save_event_history(config: AgentRuntimeConfig, events: list[dict[str, Any]]) -> None:
+        if settings.log.debug:
+            filepath = await get_thread_workspace_path(
+                config=config.to_langgraph_config(),
+                artifact_type=ToolArtifactType.HISTORY,
+                subdir=EVENT_HISTORY_SUBDIR,
+                filename=generate_timestamp_filename("json"),
+            )
+            content = "[\n"
+            content += ",\n".join(json.dumps(event, ensure_ascii=False) for event in events)
+            content += "\n]\n"
+            await write_file(filepath, content)
 
     @classmethod
     def build_input(
@@ -109,21 +131,29 @@ class AgentAGUIExecutor:
         agui_agent = self.build_agent(agent, config)
         agui_input = self.build_input(config, message, resume, **kwargs)
         pending_interrupts: list[Interrupt] = []
+        recorded_events: list[dict[str, Any]] = []
 
-        async for event in agui_agent.run(agui_input):
-            if isinstance(event, CustomEvent) and event.name == LangGraphEventTypes.OnInterrupt.value:
-                pending_interrupts.extend(self._build_standard_interrupts(event))
-                continue
+        try:
+            async for event in agui_agent.run(agui_input):
+                if isinstance(event, CustomEvent) and event.name == LangGraphEventTypes.OnInterrupt.value:
+                    pending_interrupts.extend(self._build_standard_interrupts(event))
+                    continue
 
-            if isinstance(event, RunFinishedEvent) and pending_interrupts:
-                yield RunFinishedEvent(
-                    type=EventType.RUN_FINISHED,
-                    thread_id=event.thread_id,
-                    run_id=event.run_id,
-                    result=event.result,
-                    outcome=RunFinishedInterruptOutcome(interrupts=pending_interrupts),
-                    raw_event=event.raw_event,
-                )
-                continue
+                if isinstance(event, RunFinishedEvent) and pending_interrupts:
+                    event = RunFinishedEvent(
+                        type=EventType.RUN_FINISHED,
+                        thread_id=event.thread_id,
+                        run_id=event.run_id,
+                        result=event.result,
+                        outcome=RunFinishedInterruptOutcome(interrupts=pending_interrupts),
+                        raw_event=event.raw_event,
+                    )
 
-            yield event
+                recorded_events.append(make_json_safe(event.model_dump(by_alias=True, exclude_none=True)))
+                yield event
+
+        finally:
+            try:
+                await self._save_event_history(config, recorded_events)
+            except Exception as exc:
+                logger.warning(f"Failed to save agent event history: {exc}")
