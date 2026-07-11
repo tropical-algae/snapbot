@@ -16,6 +16,7 @@ class SubAgentName(AgentName):
     INFO_SEARCHAGENT = "info_searcher"
     MEMORY_MANAGER = "memory_manager"
     GROUP_OPERATOR = "group_operator"
+    COMIC_DOWNLOADER = "comic_downloader"
 
 
 class AgentRuntimeConfig(BaseModel):

@@ -90,7 +90,12 @@ class AgentRegistry:
         ]
         self.subagents = subagents
 
-    async def _register_root_agent(self, thread_id: str, agent_name: RootAgentName) -> CompiledStateGraph:
+    async def _register_root_agent(
+        self,
+        thread_id: str,
+        agent_name: RootAgentName,
+        excluded_subagents: list[SubAgentName] | None = None,
+    ) -> CompiledStateGraph:
         checkpointer = self._checkpointers.get(agent_name)
         if checkpointer is None:
             raise RuntimeError(
@@ -105,11 +110,20 @@ class AgentRegistry:
         backend_path = Path(settings.agent.backend_path) / thread_id
         await (backend_path / "skills").mkdir(parents=True, exist_ok=True)
         system_prompt = await prompt_registry.get_system_prompt(agent_name)
+        subagents = (
+            self.subagents
+            if excluded_subagents is None
+            else [
+                subagent
+                for subagent in self.subagents
+                if (name := subagent.get("name")) is not None and name not in excluded_subagents
+            ]
+        )
 
         return create_deep_agent(
             model=model,
             tools=tools or None,
-            subagents=self.subagents,
+            subagents=subagents,
             system_prompt=system_prompt,
             middleware=[cast(AgentMiddleware[Any, Any, Any], FileMemoryMiddleware())],
             permissions=[
@@ -141,11 +155,14 @@ class AgentRegistry:
                 await checkpointer.adelete_thread(thread_id)
 
     async def get_agent(
-        self, thread_id: str, agent_name: RootAgentName = RootAgentName.SNAP_AGENT
+        self,
+        thread_id: str,
+        agent_name: RootAgentName = RootAgentName.SNAP_AGENT,
+        excluded_subagents: list[SubAgentName] | None = None,
     ) -> CompiledStateGraph:
         thread_agents = self.agents[thread_id]
         if agent_name not in thread_agents:
-            thread_agents[agent_name] = await self._register_root_agent(thread_id, agent_name)
+            thread_agents[agent_name] = await self._register_root_agent(thread_id, agent_name, excluded_subagents)
         return thread_agents[agent_name]
 
 
