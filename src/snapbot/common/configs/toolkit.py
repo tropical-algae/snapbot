@@ -13,3 +13,4 @@ class VolcanoTTS(BaseModel):
 class ToolkitConfig(BaseModel):
     tavily_key: str
     volcano_tts: VolcanoTTS
+    jm_option_file: str = Field(default="option.yml")
