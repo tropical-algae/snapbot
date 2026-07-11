@@ -77,6 +77,8 @@ ignore = [
   # "ANN201", # Missing return type annotation for public function
   "E501",   # Line too long
   "RUF002", # Checks for ambiguous Unicode characters in docstrings
+  "RUF001", # Checks for ambiguous Unicode characters in docstrings
+  "RUF003", # Checks for ambiguous Unicode characters in docstrings
 ]
 
 [lint.per-file-ignores]
