@@ -38,25 +38,31 @@ async def encrypt_pdf(input_path: str | Path, output_path: str | Path, password:
     buffer = BytesIO()
     writer.write(buffer)
 
-    with Path(output_path)._path.open("wb") as file:
-        file.write(buffer.getvalue())
+    async with await Path(output_path).open("wb") as file:
+        await file.write(buffer.getvalue())
 
 
 async def compress_and_encrypt_pdf(
-    input_path: str | Path,
-    output_path: str | Path,
-    password: str,
-    dpi: int = 120,
-    quality: int = 60,
+    input_path: Path,
+    output_path: Path,
+    password: str | None,
+    dpi: int | None,
+    quality: int | None,
 ) -> None:
     output_path = Path(output_path)
-    output_path.parent._path.mkdir(parents=True, exist_ok=True)
+    await output_path.parent.mkdir(parents=True, exist_ok=True)
 
     with NamedTemporaryFile(suffix=".pdf", dir=str(output_path.parent), delete=False) as temp_file:
         compressed_path = Path(temp_file.name)
 
     try:
-        compress_pdf(input_path, compressed_path, dpi=dpi, quality=quality)
-        await encrypt_pdf(compressed_path, output_path, password)
+        if dpi is not None and quality is not None:
+            compress_pdf(input_path, compressed_path, dpi=dpi, quality=quality)
+        else:
+            await input_path.replace(compressed_path)
+        if password:
+            await encrypt_pdf(compressed_path, output_path, password)
+        else:
+            await compressed_path.replace(output_path)
     finally:
-        compressed_path._path.unlink(missing_ok=True)
+        await compressed_path.unlink(missing_ok=True)

@@ -3,7 +3,7 @@ from typing import Any, cast
 
 import aiosqlite
 from anyio import Path
-from deepagents import FilesystemPermission, SubAgent, create_deep_agent
+from deepagents import SubAgent, create_deep_agent
 from deepagents.backends import FilesystemBackend
 from langchain.agents.middleware.types import AgentMiddleware
 from langchain.chat_models import BaseChatModel, init_chat_model
@@ -65,7 +65,7 @@ class AgentRegistry:
         if settings.agent.default_model not in settings.agent.available_models:
             settings.agent.available_models.append(settings.agent.default_model)
 
-        available_models = set(settings.agent.available_models)
+        available_models = set(settings.agent.available_models + [m.model for m in settings.agent.subagents.values()])
         self.models = {
             model: init_chat_model(
                 model=model,
@@ -79,15 +79,19 @@ class AgentRegistry:
     async def _register_sub_agents(
         self,
     ) -> None:
-        subagents: list[SubAgent] = [
-            SubAgent(
-                name=name,
-                description=await prompt_registry.get_description(name),
-                system_prompt=await prompt_registry.get_system_prompt(name),
-                tools=tool_registry.get_tools(name),
-            )
-            for name in SubAgentName
-        ]
+        subagents: list[SubAgent] = []
+        for name in SubAgentName:
+            param = {
+                "name": name,
+                "description": await prompt_registry.get_description(name),
+                "system_prompt": await prompt_registry.get_system_prompt(name),
+                "tools": tool_registry.get_tools(name),
+            }
+
+            model_name = settings.agent.subagents.get(name.value).model
+            if model_name is not None and (model := self.models.get(model_name)) is not None:
+                param.update({"model": model})
+            subagents.append(SubAgent(**param))
         self.subagents = subagents
 
     async def _register_root_agent(
@@ -126,14 +130,14 @@ class AgentRegistry:
             subagents=subagents,
             system_prompt=system_prompt,
             middleware=[cast(AgentMiddleware[Any, Any, Any], FileMemoryMiddleware())],
-            permissions=[
-                FilesystemPermission(operations=["read"], paths=["/**"], mode="allow"),
-                FilesystemPermission(operations=["write"], paths=["/skills/**"], mode="allow"),
-                FilesystemPermission(operations=["write"], paths=["/**"], mode="interrupt"),
-            ],
+            # permissions=[
+            #     FilesystemPermission(operations=["read"], paths=["/**"], mode="allow"),
+            #     FilesystemPermission(operations=["write"], paths=["/skills/**"], mode="allow"),
+            #     FilesystemPermission(operations=["write"], paths=["/**"], mode="interrupt"),
+            # ],
             checkpointer=checkpointer,
             backend=FilesystemBackend(root_dir=str(backend_path), virtual_mode=True),
-            skills=["/skills/"],
+            # skills=["/skills/"],
             name=agent_name.value,
         )
 

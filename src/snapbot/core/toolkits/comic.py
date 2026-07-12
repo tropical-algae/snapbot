@@ -84,8 +84,8 @@ class JmComicToolkit:
     ) -> Path:
         pdf_dir = Path(pdf_dir)
         image_dir = Path(image_dir)
-        pdf_dir._path.mkdir(parents=True, exist_ok=True)
-        image_dir._path.mkdir(parents=True, exist_ok=True)
+        await pdf_dir.mkdir(parents=True, exist_ok=True)
+        await image_dir.mkdir(parents=True, exist_ok=True)
 
         option = await self.new_runtime_option()
         option.dir_rule.base_dir = str(image_dir)
@@ -101,12 +101,12 @@ class JmComicToolkit:
         )
 
         expected_pdf = pdf_dir / f"{filename}.pdf"
-        if expected_pdf._path.exists():
+        if await expected_pdf.exists():
             return expected_pdf
 
         latest_pdf: Path | None = None
         latest_mtime = -1.0
-        for filepath in pdf_dir._path.glob(f"{filename}*.pdf"):
+        async for filepath in pdf_dir.glob(f"{filename}*.pdf"):
             stat = filepath.stat()
             if stat.st_mtime > latest_mtime:
                 latest_pdf = Path(filepath)

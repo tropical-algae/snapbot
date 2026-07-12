@@ -3,7 +3,7 @@ from typing import Any, get_args, get_origin, get_type_hints
 
 from langchain_core.tools import ArgsSchema, BaseTool, tool
 
-from snapbot.core.tools.models import AgentName, ToolArtifactOutput, ToolMeta
+from snapbot.core.tools.models import AgentName, ToolMeta
 
 TOOL_META_ATTR = "__tool_meta__"
 
@@ -22,10 +22,8 @@ def snap_tool(
             return_annotation = get_type_hints(func).get("return")
             origin = get_origin(return_annotation)
             args = get_args(return_annotation)
-            if origin is not tuple or len(args) != 2 or args[1] is not ToolArtifactOutput:
-                raise TypeError(
-                    f"The artifact tool `{func.__name__}` must return tuple[model_content, ToolArtifactOutput]"
-                )
+            if origin is not tuple or len(args) != 2:
+                raise TypeError(f"The artifact tool `{func.__name__}` must return tuple[model_content, Any]")
 
         response_format = "content_and_artifact" if produces_artifacts else "content"
         base_tool = tool(args_schema=args_schema, response_format=response_format)(func)
