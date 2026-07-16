@@ -8,14 +8,14 @@ from snapbot.core.toolkits import tavily_client
 
 
 class WebExtractInput(BaseModel):
-    url: str = Field(description="The URL requested by the user for retrieval")
+    url: str = Field(description="需要提取内容的网页 URL")
 
 
 @snap_tool(RootAgentName.SNAP_AGENT, args_schema=WebExtractInput)
 def web_extract(
     url: str,
 ) -> dict[str, Any]:
-    """Search the web by given URL and return structured results for research tasks."""
+    """提取指定网页的内容，并返回适合研究任务使用的结构化结果。"""
     try:
         result = tavily_client.extract(
             urls=url,

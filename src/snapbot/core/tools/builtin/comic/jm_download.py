@@ -70,7 +70,7 @@ async def download_jm_album(
                     kind=ToolArtifactKind.FILE,
                     path=str(final_pdf_path),
                     name=final_pdf_path.name,
-                    caption=f"PDF 密码: {password}",
+                    caption=f"PDF 密码: {password}" if password else None,
                     mime_type="application/pdf",
                 )
             ],

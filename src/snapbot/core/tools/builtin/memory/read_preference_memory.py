@@ -10,7 +10,7 @@ from snapbot.core.agent.models import SubAgentName
 
 @snap_tool(SubAgentName.MEMORY_MANAGER)
 async def read_preference_memory(config: RunnableConfig) -> dict[str, Any]:
-    """Read the current agent preference memory file."""
+    """读取当前会话对 Agent 的偏好记忆。"""
     filepath = await get_memory_workspace_path(config, ToolArtifactType.PREFERENCE_MEMORY)
     return {
         "ok": True,

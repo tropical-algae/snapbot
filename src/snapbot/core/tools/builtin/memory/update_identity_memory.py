@@ -10,12 +10,12 @@ from snapbot.core.agent.models import SubAgentName
 
 
 class UpdateIdentityMemoryInput(BaseModel):
-    content: str = Field(description="Full Markdown content for the user's identity memory.")
+    content: str = Field(description="用户身份记忆的完整 Markdown 内容")
 
 
 @snap_tool(SubAgentName.MEMORY_MANAGER, args_schema=UpdateIdentityMemoryInput)
 async def update_identity_memory(content: str, config: RunnableConfig) -> dict[str, Any]:
-    """Update the current user's identity memory."""
+    """更新当前用户的身份记忆。"""
     filepath = await get_memory_workspace_path(config, ToolArtifactType.IDENTITY_MEMORY)
     old_content = await read_file(filepath)
     await write_file(filepath, content)

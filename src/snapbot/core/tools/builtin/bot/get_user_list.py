@@ -11,7 +11,7 @@ from snapbot.core.agent.models.agent import SubAgentName
 
 @snap_tool(SubAgentName.GROUP_OPERATOR)
 async def get_group_user_list(config: RunnableConfig) -> str:
-    """获取当前群组中全部用户的nickname与ID"""
+    """获取当前群聊中全部成员的昵称与用户 ID。"""
 
     configurable: dict = config.get("configurable", {})
     api = cast(BotAPIClient | None, configurable.get("api"))

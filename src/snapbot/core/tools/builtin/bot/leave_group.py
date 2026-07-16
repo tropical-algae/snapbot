@@ -10,7 +10,7 @@ from snapbot.core.agent.models.agent import SubAgentName
 
 @snap_tool(SubAgentName.GROUP_OPERATOR)
 async def leave_group(config: RunnableConfig) -> str:
-    """离开群聊"""
+    """退出当前群聊。"""
 
     configurable: dict = config.get("configurable", {})
     api = cast(BotAPIClient | None, configurable.get("api"))

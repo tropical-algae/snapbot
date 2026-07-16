@@ -15,12 +15,12 @@ AUDIO_ENCODING = "mp3"
 
 
 class TextToSpeechInput(BaseModel):
-    text: str = Field(description="Text to be converted to speech.")
+    text: str = Field(description="需要转换为语音的文本")
 
 
 @snap_tool(RootAgentName.SNAP_AGENT, args_schema=TextToSpeechInput, produces_artifacts=True)
 async def text_to_speech(text: str, config: RunnableConfig) -> tuple[str, ToolArtifactOutput]:
-    """Convert text into audio. When replying to users via voice, use this tool."""
+    """将文本转换为音频；需要使用语音回复用户时调用。"""
     reqid = generate_timestamp_filename()
     filepath = await get_thread_workspace_path(
         config=config, artifact_type=ToolArtifactType.CACHE, subdir="tts", filename=reqid, ext=AUDIO_ENCODING
@@ -28,6 +28,6 @@ async def text_to_speech(text: str, config: RunnableConfig) -> tuple[str, ToolAr
 
     await volcano_text_to_speech(text, filepath, reqid, AUDIO_ENCODING)
     return (
-        "Voice generated successfully.",
+        "语音已生成。",
         ToolArtifactOutput(artifacts=[ToolArtifact(kind=ToolArtifactKind.AUDIO, path=str(filepath))]),
     )

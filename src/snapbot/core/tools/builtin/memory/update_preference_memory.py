@@ -10,12 +10,12 @@ from snapbot.core.agent.models import SubAgentName
 
 
 class UpdatePreferenceMemoryInput(BaseModel):
-    content: str = Field(description="Full Markdown content for the agent preference memory.")
+    content: str = Field(description="当前会话对 Agent 偏好记忆的完整 Markdown 内容")
 
 
 @snap_tool(SubAgentName.MEMORY_MANAGER, args_schema=UpdatePreferenceMemoryInput)
 async def update_preference_memory(content: str, config: RunnableConfig) -> dict[str, Any]:
-    """Update the current agent preference memory."""
+    """更新当前会话对 Agent 的偏好记忆。"""
     filepath = await get_memory_workspace_path(config, ToolArtifactType.PREFERENCE_MEMORY)
     old_content = await read_file(filepath)
     await write_file(filepath, content)
