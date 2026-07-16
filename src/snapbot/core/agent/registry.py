@@ -12,6 +12,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
 
 from snapbot.common.configs import settings
+from snapbot.common.configs.agent import AgentParam
 from snapbot.common.logging import logger
 from snapbot.common.model import ToolArtifactType
 from snapbot.common.utils.file import get_memory_workspace_path, remove_file
@@ -20,11 +21,13 @@ from snapbot.core.middleware.memory import FileMemoryMiddleware
 from snapbot.core.prompts.registry import prompt_registry
 from snapbot.core.tools.registry import tool_registry
 
+AgentCacheKey = tuple[RootAgentName, tuple[str, ...], tuple[str, ...]]
+
 
 class AgentRegistry:
     def __init__(self) -> None:
         self.models: dict[str, BaseChatModel] = {}
-        self.agents: dict[str, dict[RootAgentName, CompiledStateGraph]] = defaultdict(dict)
+        self.agents: dict[str, dict[AgentCacheKey, CompiledStateGraph]] = defaultdict(dict)
         self.subagents: list[SubAgent] = []
 
         self._checkpoint_conns: dict[RootAgentName, aiosqlite.Connection] = {}
@@ -62,19 +65,25 @@ class AgentRegistry:
     def _register_models(
         self,
     ) -> None:
-        if settings.agent.default_model not in settings.agent.available_models:
-            settings.agent.available_models.append(settings.agent.default_model)
+        models: dict[str, BaseChatModel] = {}
+        for config in settings.agent.models:
+            for model_name in config.names:
+                model_key = f"{config.provider}:{model_name}"
+                if model_key in models:
+                    raise ValueError(f"Duplicate model config: {model_key}")
 
-        available_models = set(settings.agent.available_models + [m.model for m in settings.agent.subagents.values()])
-        self.models = {
-            model: init_chat_model(
-                model=model,
-                model_provider=settings.agent.model_provider,
-                api_key=settings.agent.api_key,
-                base_url=settings.agent.base_url,
-            )
-            for model in available_models
-        }
+                models[model_key] = init_chat_model(
+                    model=model_name,
+                    model_provider=config.provider,
+                    api_key=config.api_key,
+                    base_url=config.base_url,
+                )
+
+        self.models = models
+
+    @staticmethod
+    def _get_agent_param(agent_name: RootAgentName | SubAgentName) -> AgentParam | None:
+        return settings.agent.agent.get(agent_name.value)
 
     async def _register_sub_agents(
         self,
@@ -82,15 +91,15 @@ class AgentRegistry:
         subagents: list[SubAgent] = []
         for name in SubAgentName:
             param = {
-                "name": name,
+                "name": name.value,
                 "description": await prompt_registry.get_description(name),
                 "system_prompt": await prompt_registry.get_system_prompt(name),
                 "tools": tool_registry.get_tools(name),
             }
 
-            model_name = settings.agent.subagents.get(name.value).model
-            if model_name is not None and (model := self.models.get(model_name)) is not None:
-                param.update({"model": model})
+            agent_param = self._get_agent_param(name)
+            if agent_param is not None and (model := self.models.get(agent_param.model)) is not None:
+                param["model"] = model
             subagents.append(SubAgent(**param))
         self.subagents = subagents
 
@@ -99,6 +108,7 @@ class AgentRegistry:
         thread_id: str,
         agent_name: RootAgentName,
         excluded_subagents: list[SubAgentName] | None = None,
+        excluded_tools: list[str] | None = None,
     ) -> CompiledStateGraph:
         checkpointer = self._checkpointers.get(agent_name)
         if checkpointer is None:
@@ -106,11 +116,15 @@ class AgentRegistry:
                 f"Can not get checkpoint for {agent_name}, call AgentRegistry.setup() before get_agent()"
             )
 
-        model = self.models.get(settings.agent.default_model)
-        if not model:
-            raise ValueError(f"Default model {settings.agent.default_model} was not registered")
+        agent_param = self._get_agent_param(agent_name)
+        if agent_param is None:
+            raise ValueError(f"Agent {agent_name.value} was not configured")
 
-        tools = tool_registry.get_tools(agent_name)
+        model = self.models.get(agent_param.model)
+        if not model:
+            raise ValueError(f"Agent model {agent_param.model} was not registered")
+
+        tools = tool_registry.get_tools(agent_name, excluded_tools=excluded_tools)
         backend_path = Path(settings.agent.backend_path) / thread_id
         await (backend_path / "skills").mkdir(parents=True, exist_ok=True)
         system_prompt = await prompt_registry.get_system_prompt(agent_name)
@@ -163,10 +177,13 @@ class AgentRegistry:
         thread_id: str,
         agent_name: RootAgentName = RootAgentName.SNAP_AGENT,
         excluded_subagents: list[SubAgentName] | None = None,
+        excluded_tools: list[str] | None = None,
     ) -> CompiledStateGraph:
         thread_agents = self.agents[thread_id]
         if agent_name not in thread_agents:
-            thread_agents[agent_name] = await self._register_root_agent(thread_id, agent_name, excluded_subagents)
+            thread_agents[agent_name] = await self._register_root_agent(
+                thread_id, agent_name, excluded_subagents, excluded_tools
+            )
         return thread_agents[agent_name]
 
 

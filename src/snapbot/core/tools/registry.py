@@ -4,7 +4,6 @@ from langchain_core.tools import BaseTool
 
 from snapbot.common.configs import settings
 from snapbot.common.configs.tool import ToolConfig
-from snapbot.common.logging import logger
 from snapbot.common.utils.decorator import TOOL_META_ATTR
 from snapbot.common.utils.packages import iter_builtin_tools
 from snapbot.core.agent.models import AgentName
@@ -20,7 +19,6 @@ class ToolRegistry:
         self.tools: dict[AgentName, list[BaseTool]] = tools
         self.disabled_tools: dict[AgentName, list[BaseTool]] = disabled_tools
         self.tool_metas: dict[str, ToolMeta] = tool_metas
-        logger.info(tools)
 
     @staticmethod
     def _extract_tool_meta(tool: object) -> ToolMeta | None:
@@ -74,10 +72,15 @@ class ToolRegistry:
         agent_name: AgentName,
         *,
         include_disabled: bool = False,
+        excluded_tools: list[str] | None = None,
     ) -> list[BaseTool]:
-        payload: list[BaseTool] = self.tools.get(agent_name, [])
+        payload: list[BaseTool] = list(self.tools.get(agent_name, []))
         if include_disabled:
             payload.extend(self.disabled_tools.get(agent_name, []))
+
+        if excluded_tools:
+            excluded_tool_names = set(excluded_tools)
+            payload = [tool for tool in payload if tool.name not in excluded_tool_names]
 
         return payload
 
