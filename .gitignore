@@ -65,4 +65,5 @@ data/
 
 # config
 config.yaml
+option.yml
 .env

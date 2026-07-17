@@ -2692,7 +2692,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "pymupdf" },
     { name = "pypdf" },
-    { name = "tavily" },
+    { name = "tavily-python" },
 ]
 
 [package.dev-dependencies]
@@ -2731,7 +2731,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.14.2" },
     { name = "pymupdf", specifier = ">=1.28.0" },
     { name = "pypdf", specifier = ">=6.14.2" },
-    { name = "tavily", specifier = ">=1.1.0" },
+    { name = "tavily-python", specifier = ">=0.7.26" },
 ]
 
 [package.metadata.requires-dev]
@@ -2807,14 +2807,18 @@ wheels = [
 ]
 
 [[package]]
-name = "tavily"
-version = "1.1.0"
+name = "tavily-python"
+version = "0.7.26"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
 dependencies = [
-    { name = "aiohttp" },
+    { name = "httpx" },
     { name = "requests" },
+    { name = "tiktoken" },
 ]
-sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/63/ba/cd74acdb0537a02fb5657afbd5fd5a27a298c85fc27f544912cc001377bb/tavily-1.1.0.tar.gz", hash = "sha256:7730bf10c925dc0d0d84f27a8979de842ecf88c2882183409addd855e27d8fab", size = 5081, upload-time = "2025-10-31T09:32:40.555Z" }
+sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/bd/29/c2d5056dbf45a80484df5a1bf0d0ae59c611aa9680372c400a278fbf0c50/tavily_python-0.7.26.tar.gz", hash = "sha256:36202728144fce1ef0cece33800f98e3cdeb5f600e6678c50b1232b866a2f509", size = 29647, upload-time = "2026-06-10T18:38:45.231Z" }
+wheels = [
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/1b/c2/616ebcd49561d74c93099efa45fd5a4af2e528415f01351575980be0ba9e/tavily_python-0.7.26-py3-none-any.whl", hash = "sha256:9b9e7f2d10b3572444e13e9a3bf4f5341975d591cbc1306be04ef89a363e42a7", size = 21940, upload-time = "2026-06-10T18:38:44.127Z" },
+]
 
 [[package]]
 name = "tenacity"

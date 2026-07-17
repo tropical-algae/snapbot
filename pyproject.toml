@@ -23,7 +23,7 @@ dependencies = [
   "pydantic-settings>=2.14.2",
   "pymupdf>=1.28.0",
   "pypdf>=6.14.2",
-  "tavily>=1.1.0",
+  "tavily-python>=0.7.26",
 ]
 
 [dependency-groups]
