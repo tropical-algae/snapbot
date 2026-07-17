@@ -21,13 +21,11 @@ from snapbot.core.middleware.memory import FileMemoryMiddleware
 from snapbot.core.prompts.registry import prompt_registry
 from snapbot.core.tools.registry import tool_registry
 
-AgentCacheKey = tuple[RootAgentName, tuple[str, ...], tuple[str, ...]]
-
 
 class AgentRegistry:
     def __init__(self) -> None:
         self.models: dict[str, BaseChatModel] = {}
-        self.agents: dict[str, dict[AgentCacheKey, CompiledStateGraph]] = defaultdict(dict)
+        self.agents: dict[str, dict[RootAgentName, CompiledStateGraph]] = defaultdict(dict)
         self.subagents: list[SubAgent] = []
 
         self._checkpoint_conns: dict[RootAgentName, aiosqlite.Connection] = {}
@@ -83,24 +81,36 @@ class AgentRegistry:
 
     @staticmethod
     def _get_agent_param(agent_name: RootAgentName | SubAgentName) -> AgentParam | None:
-        return settings.agent.agent.get(agent_name.value)
+        return settings.agent.agents.get(agent_name.value)
 
     async def _register_sub_agents(
         self,
     ) -> None:
         subagents: list[SubAgent] = []
         for name in SubAgentName:
-            param = {
-                "name": name.value,
-                "description": await prompt_registry.get_description(name),
-                "system_prompt": await prompt_registry.get_system_prompt(name),
-                "tools": tool_registry.get_tools(name),
-            }
-
+            description = await prompt_registry.get_description(name)
+            system_prompt = await prompt_registry.get_system_prompt(name)
+            tools = tool_registry.get_tools(name)
             agent_param = self._get_agent_param(name)
-            if agent_param is not None and (model := self.models.get(agent_param.model)) is not None:
-                param["model"] = model
-            subagents.append(SubAgent(**param))
+            model = self.models.get(agent_param.model) if agent_param is not None else None
+
+            if model is not None:
+                subagent = SubAgent(
+                    name=name.value,
+                    description=description,
+                    system_prompt=system_prompt,
+                    tools=tools,
+                    model=model,
+                )
+            else:
+                subagent = SubAgent(
+                    name=name.value,
+                    description=description,
+                    system_prompt=system_prompt,
+                    tools=tools,
+                )
+
+            subagents.append(subagent)
         self.subagents = subagents
 
     async def _register_root_agent(

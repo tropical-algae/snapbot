@@ -2,11 +2,12 @@ from dataclasses import dataclass
 from typing import Literal
 
 from anyio import Path
-from jmcomic import Feature, JmMagicConstants, JmOption, create_option_by_file, download_photo_async
+from jmcomic import Feature, JmMagicConstants, JmOption, JmSearchPage, create_option_by_file, download_photo_async
 
 from snapbot.common.configs import settings
 
 JmTime = Literal["a", "t", "w", "m"]
+JmOrderBy = Literal["mr", "mv", "mp", "tf", "md", "tr"]
 JmCategory = Literal[
     "0",
     "doujin",
@@ -19,7 +20,6 @@ JmCategory = Literal[
     "3D",
     "english_site",
 ]
-JmOrderBy = Literal["mr", "mv", "mp", "tf", "md", "tr"]
 
 
 @dataclass(frozen=True)
@@ -51,7 +51,7 @@ class JmComicToolkit:
         return option
 
     @staticmethod
-    def parse_album_items(page: object) -> list[JmAlbumItem]:
+    def parse_album_items(page: JmSearchPage) -> list[JmAlbumItem]:
         iter_id_title = getattr(page, "iter_id_title", None)
         items = iter_id_title() if callable(iter_id_title) else page
         return [JmAlbumItem(album_id=str(album_id), title=str(title)) for album_id, title in items]
@@ -107,7 +107,7 @@ class JmComicToolkit:
         latest_pdf: Path | None = None
         latest_mtime = -1.0
         async for filepath in pdf_dir.glob(f"{filename}*.pdf"):
-            stat = filepath.stat()
+            stat = await filepath.stat()
             if stat.st_mtime > latest_mtime:
                 latest_pdf = Path(filepath)
                 latest_mtime = stat.st_mtime

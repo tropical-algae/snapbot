@@ -28,7 +28,7 @@ class AGUIAgentAdapter(LangGraphAgent):
 
     @staticmethod
     def _build_tool_artifact_event(event: Any, tool_message: ToolMessage) -> CustomEvent | None:
-        artifact: ToolArtifactOutput = getattr(tool_message, "artifact", None)
+        artifact: ToolArtifactOutput | None = getattr(tool_message, "artifact", None)
         if artifact is None:
             return None
 

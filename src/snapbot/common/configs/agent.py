@@ -17,8 +17,8 @@ class ModelConfig(BaseModel):
 
 
 class AgentConfig(BaseModel):
-    models: list[ModelConfig]
-    agent: dict[str, AgentParam]
+    models: list[ModelConfig] = Field(default_factory=list)
+    agents: dict[str, AgentParam] = Field(default_factory=dict)
 
     cache_path: str = Field(default="data/cache")
     history_path: str = Field(default="data/history")
@@ -29,14 +29,17 @@ class AgentConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_agent_definitions(self) -> Self:
+        if not self.models or not self.agents:
+            raise ValueError("agents 与 models 配置不可为空")
+
         valid_agent_names = {agent.value for agent in (*RootAgentName, *SubAgentName)}
-        invalid_agent_names = sorted(set(self.agent) - valid_agent_names)
+        invalid_agent_names = sorted(set(self.agents) - valid_agent_names)
         if invalid_agent_names:
-            raise ValueError(f"agent 包含未定义的名称: {', '.join(invalid_agent_names)}")
+            raise ValueError(f"agents 包含未定义的名称: {', '.join(invalid_agent_names)}")
 
         valid_model_names = {f"{model.provider}:{model_name}" for model in self.models for model_name in model.names}
-        invalid_model_names = sorted({param.model for param in self.agent.values()} - valid_model_names)
+        invalid_model_names = sorted({param.model for param in self.agents.values()} - valid_model_names)
         if invalid_model_names:
-            raise ValueError(f"agent 引用了未配置的模型: {', '.join(invalid_model_names)}")
+            raise ValueError(f"agents 引用了未配置的模型: {', '.join(invalid_model_names)}")
 
         return self

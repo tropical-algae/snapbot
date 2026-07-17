@@ -23,8 +23,8 @@ async def send_poke(config: RunnableConfig, target_user_id: str | None = None) -
     api = cast(BotAPIClient | None, configurable.get("api"))
     event = cast(GroupMessageEvent | PrivateMessageEvent | None, configurable.get("event"))
 
-    target_user_id = target_user_id or event.user_id
     if api and event:
+        target_user_id = target_user_id or event.user_id
         await api.qq.send_poke(event.group_id, target_user_id)
         return "已完成戳一戳"
     return "未完成戳一戳"

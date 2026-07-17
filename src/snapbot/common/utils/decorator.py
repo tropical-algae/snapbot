@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Any, get_args, get_origin, get_type_hints
+from typing import Any, Literal, cast, get_args, get_origin, get_type_hints
 
 from langchain_core.tools import ArgsSchema, BaseTool, tool
 
@@ -25,8 +25,16 @@ def snap_tool(
             if origin is not tuple or len(args) != 2:
                 raise TypeError(f"The artifact tool `{func.__name__}` must return tuple[model_content, Any]")
 
-        response_format = "content_and_artifact" if produces_artifacts else "content"
-        base_tool = tool(args_schema=args_schema, response_format=response_format)(func)
+        response_format: Literal["content", "content_and_artifact"] = (
+            "content_and_artifact" if produces_artifacts else "content"
+        )
+        base_tool = cast(
+            BaseTool,
+            tool(
+                args_schema=args_schema,
+                response_format=response_format,
+            )(func),
+        )
         setattr(
             base_tool,
             TOOL_META_ATTR,
