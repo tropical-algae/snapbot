@@ -21,11 +21,13 @@ from snapbot.core.middleware.memory import FileMemoryMiddleware
 from snapbot.core.prompts.registry import prompt_registry
 from snapbot.core.tools.registry import tool_registry
 
+AgentCacheKey = tuple[RootAgentName, tuple[str, ...], tuple[str, ...]]
+
 
 class AgentRegistry:
     def __init__(self) -> None:
         self.models: dict[str, BaseChatModel] = {}
-        self.agents: dict[str, dict[RootAgentName, CompiledStateGraph]] = defaultdict(dict)
+        self.agents: dict[str, dict[AgentCacheKey, CompiledStateGraph]] = defaultdict(dict)
         self.subagents: list[SubAgent] = []
 
         self._checkpoint_conns: dict[RootAgentName, aiosqlite.Connection] = {}
@@ -178,9 +180,23 @@ class AgentRegistry:
         agent_names = list(RootAgentName) if agent_names is None else agent_names
         agents = self.agents.get(thread_id, {})
         for agent_name in agent_names:
-            agents.pop(agent_name, None)
+            cache_keys = [cache_key for cache_key in agents if cache_key[0] == agent_name]
+            for cache_key in cache_keys:
+                agents.pop(cache_key, None)
             if checkpointer := self._checkpointers.get(agent_name):
                 await checkpointer.adelete_thread(thread_id)
+
+    @staticmethod
+    def _build_agent_cache_key(
+        agent_name: RootAgentName,
+        excluded_subagents: list[SubAgentName] | None,
+        excluded_tools: list[str] | None,
+    ) -> AgentCacheKey:
+        return (
+            agent_name,
+            tuple(sorted(name.value for name in excluded_subagents or [])),
+            tuple(sorted(excluded_tools or [])),
+        )
 
     async def get_agent(
         self,
@@ -190,11 +206,12 @@ class AgentRegistry:
         excluded_tools: list[str] | None = None,
     ) -> CompiledStateGraph:
         thread_agents = self.agents[thread_id]
-        if agent_name not in thread_agents:
-            thread_agents[agent_name] = await self._register_root_agent(
+        cache_key = self._build_agent_cache_key(agent_name, excluded_subagents, excluded_tools)
+        if cache_key not in thread_agents:
+            thread_agents[cache_key] = await self._register_root_agent(
                 thread_id, agent_name, excluded_subagents, excluded_tools
             )
-        return thread_agents[agent_name]
+        return thread_agents[cache_key]
 
 
 # async def run():
