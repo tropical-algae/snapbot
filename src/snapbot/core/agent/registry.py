@@ -43,6 +43,7 @@ class AgentRegistry:
     async def setup(self) -> None:
         logger.info("Setup agent registry.")
         self._register_models()
+        await tool_registry.setup()
         await self._register_sub_agents()
 
         sqlite_path = Path(settings.agent.sqlite_path)

@@ -9,6 +9,7 @@ from pydantic_settings import (
 from snapbot import __version__
 from snapbot.common.configs.agent import AgentConfig
 from snapbot.common.configs.logger import LoggerConfig
+from snapbot.common.configs.mcp import MCPConfig
 from snapbot.common.configs.prompt import PromptConfig
 from snapbot.common.configs.tool import ToolConfig
 from snapbot.common.configs.toolkit import ToolkitConfig
@@ -26,6 +27,7 @@ class Setting(BaseSettings):
     prompt: PromptConfig = Field(default_factory=PromptConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
     agent_tools: dict[str, ToolConfig] = Field(default_factory=dict)
+    mcp: MCPConfig = Field(default_factory=MCPConfig)
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,

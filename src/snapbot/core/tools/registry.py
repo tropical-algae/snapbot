@@ -1,4 +1,5 @@
 from collections import defaultdict
+from collections.abc import Sequence
 
 from langchain_core.tools import BaseTool
 
@@ -7,6 +8,7 @@ from snapbot.common.configs.tool import ToolConfig
 from snapbot.common.utils.decorator import TOOL_META_ATTR
 from snapbot.common.utils.packages import iter_builtin_tools
 from snapbot.core.agent.models import AgentName
+from snapbot.core.tools.mcp import MCPClientManager
 from snapbot.core.tools.models import ToolMeta
 
 BUILTIN_TOOLS_PACKAGE = "snapbot.core.tools.builtin"
@@ -14,11 +16,15 @@ BUILTIN_TOOLS_PACKAGE = "snapbot.core.tools.builtin"
 
 class ToolRegistry:
     def __init__(self):
-        tools, disabled_tools, tool_metas = self._collect_all_builtin_tools()
+        self._builtin_tools = list(iter_builtin_tools(BUILTIN_TOOLS_PACKAGE))
+        self.mcp_client_manager: MCPClientManager | None = None
+        self._mcp_initialized = False
 
-        self.tools: dict[AgentName, list[BaseTool]] = tools
-        self.disabled_tools: dict[AgentName, list[BaseTool]] = disabled_tools
-        self.tool_metas: dict[str, ToolMeta] = tool_metas
+        self.tools: dict[AgentName, list[BaseTool]] = defaultdict(list)
+        self.disabled_tools: dict[AgentName, list[BaseTool]] = defaultdict(list)
+        self.tool_metas: dict[str, ToolMeta] = {}
+        builtin_registrations = [(tool, self._extract_tool_meta(tool)) for tool in self._builtin_tools]
+        self._register_tools(builtin_registrations)
 
     @staticmethod
     def _extract_tool_meta(tool: object) -> ToolMeta | None:
@@ -28,44 +34,84 @@ class ToolRegistry:
         return None
 
     @staticmethod
-    def _merge_tool_config(meta: ToolMeta, config: ToolConfig | None) -> ToolMeta:
+    def _merge_tool_config(
+        meta: ToolMeta,
+        config: ToolConfig | None,
+        *,
+        additive_belong: bool = False,
+    ) -> ToolMeta:
         if config is None:
             return meta
 
         cfg_meta = config.meta
+        belong = meta.belong
+        if cfg_meta.belong:
+            belong = meta.belong | cfg_meta.belong if additive_belong else cfg_meta.belong
+
         return ToolMeta(
-            belong=cfg_meta.belong if len(cfg_meta.belong) > 0 else meta.belong,
+            belong=belong,
             enabled=cfg_meta.enabled if cfg_meta.enabled is not None else meta.enabled,
         )
 
-    def _collect_all_builtin_tools(
+    def _register_tools(
         self,
-    ) -> tuple[dict[AgentName, list[BaseTool]], dict[AgentName, list[BaseTool]], dict[str, ToolMeta]]:
-        tools: dict[AgentName, list[BaseTool]] = defaultdict(list)
-        disabled_tools: dict[AgentName, list[BaseTool]] = defaultdict(list)
-        tool_metas: dict[str, ToolMeta] = {}
+        tool_registrations: Sequence[tuple[BaseTool, ToolMeta | None]],
+        *,
+        additive_belong: bool = False,
+    ) -> None:
+        registrations: list[tuple[BaseTool, ToolMeta, bool]] = []
+        registered_names = set(self.tool_metas)
 
-        for tool in iter_builtin_tools(BUILTIN_TOOLS_PACKAGE):
+        for tool, meta in tool_registrations:
             tool_name = tool.name
-            meta: ToolMeta | None = self._extract_tool_meta(tool)
             config: ToolConfig | None = settings.agent_tools.get(tool_name)
 
             if meta is None:
                 continue
 
-            meta = self._merge_tool_config(meta, config)
+            if tool_name in registered_names:
+                raise ValueError(f"Duplicate tool name: {tool_name}")
+
+            meta = meta or ToolMeta(enabled=False)
+            meta = self._merge_tool_config(meta, config, additive_belong=additive_belong)
             enabled = meta.enabled if meta.enabled is not None else False
-            tool_metas[tool_name] = meta
+            if enabled and not meta.belong:
+                raise ValueError(f"Enabled tool `{tool_name}` does not belong to any agent")
+
+            registered_names.add(tool_name)
+            registrations.append((tool, meta, enabled))
+
+        for tool, meta, enabled in registrations:
+            tool_name = tool.name
+            self.tool_metas[tool_name] = meta
 
             if not enabled:
                 for belong in meta.belong:
-                    disabled_tools[belong].append(tool)
+                    self.disabled_tools[belong].append(tool)
                 continue
 
             for belong in meta.belong:
-                tools[belong].append(tool)
+                self.tools[belong].append(tool)
 
-        return tools, disabled_tools, tool_metas
+    async def setup(self) -> None:
+        if self._mcp_initialized:
+            return
+
+        manager = MCPClientManager(settings.mcp)
+        mcp_tools = await manager.load_tools()
+        mcp_registrations = [
+            (
+                registration.tool,
+                ToolMeta(
+                    belong=registration.belong,
+                    enabled=bool(registration.belong),
+                ),
+            )
+            for registration in mcp_tools
+        ]
+        self._register_tools(mcp_registrations, additive_belong=True)
+        self.mcp_client_manager = manager
+        self._mcp_initialized = True
 
     def get_tools(
         self,

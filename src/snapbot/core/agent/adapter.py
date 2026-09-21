@@ -8,6 +8,7 @@ from langchain_core.messages import ToolMessage
 from langgraph.types import Command
 
 from snapbot.core.agent.models.event import CustomEventType, ToolArtifactEvent
+from snapbot.core.tools.mcp import parse_mcp_tool_artifact
 from snapbot.core.tools.models import ToolArtifactOutput
 
 
@@ -28,7 +29,8 @@ class AGUIAgentAdapter(LangGraphAgent):
 
     @staticmethod
     def _build_tool_artifact_event(event: Any, tool_message: ToolMessage) -> CustomEvent | None:
-        artifact: ToolArtifactOutput | None = getattr(tool_message, "artifact", None)
+        raw_artifact = getattr(tool_message, "artifact", None)
+        artifact: ToolArtifactOutput | None = parse_mcp_tool_artifact(raw_artifact)
         if artifact is None:
             return None
 
