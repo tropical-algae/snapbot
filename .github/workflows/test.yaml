@@ -1,25 +1,66 @@
-name: Test Project
+name: Quality Gate
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  test:
+  backend:
+    name: Backend Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
-      PYTHON_VERSION: "3.13"
-      UV_VERSION: "0.11.21"
+      agent: >-
+        {"models":[{"provider":"openai","names":["test-model"]}],"agents":{"snap_agent":{"model":"openai:test-model"}}}
+      toolkits: >-
+        {"tavily_key":"test","volcano_tts":{"app_id":"test","access_token":"test","voice_type":"test"}}
 
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - name: Setup | Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup | Python 3.13
+        uses: actions/setup-python@v6
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Install UV
-        run: |
-          pip install uv==${{ env.UV_VERSION }}
-          uv sync --dev --frozen
-      - name: Run Tests
-        run: uv run poe test-ci
+          python-version: "3.13"
+
+      - name: Setup | uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          version: "0.11.21"
+          enable-cache: true
+
+      - name: Setup | Python Dependencies
+        run: uv sync --dev --locked
+
+      - name: Check | Pre-commit
+        run: uv run pre-commit run --all-files --show-diff-on-failure
+
+      - name: Check | Static Analysis
+        run: uv run poe lint
+
+      - name: Check | Backend Tests
+        run: uv run poe test
+
+      - name: Upload | Coverage Report
+        if: >-
+          github.repository == 'tropical-algae/snapbot' &&
+          (github.event_name == 'push' ||
+          github.event.pull_request.head.repo.full_name == github.repository)
+        uses: codecov/codecov-action@v6
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          disable_search: true
+          fail_ci_if_error: true
