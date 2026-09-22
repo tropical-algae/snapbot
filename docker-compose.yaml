@@ -1,0 +1,16 @@
+services:
+  snapbot:
+    image: tropicalalgae/snapbot:latest
+    container_name: snapbot
+    restart: unless-stopped
+
+    network_mode: host
+
+    environment:
+      TZ: "${TZ:-Asia/Shanghai}"
+
+    volumes:
+      - "${SNAPBOT_ROOT:-.}/config.yaml:/app/config.yaml"
+      - "${SNAPBOT_ROOT:-.}/option.yml:/app/option.yml"
+      - "${SNAPBOT_ROOT:-.}/data:/app/data"
+      - "${SNAPBOT_ROOT:-.}/logs:/app/logs"
