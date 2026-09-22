@@ -79,8 +79,7 @@ ignore_merge_commits = true
 
 [semantic_release.remote]
 name = "origin"
-type = "gitlab"
-token = { env = "GITLAB_TOKEN" }
+type = "github"
+token = { env = "GH_TOKEN" }
 ignore_token_for_push = false
-insecure = true
 url = "https://github.com/tropical-algae/snapbot.git"
