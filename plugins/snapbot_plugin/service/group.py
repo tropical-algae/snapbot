@@ -70,6 +70,16 @@ async def handle_test_action(api: BotAPIClient, event: GroupMessageEvent, group_
         message_seq=None,
         count=20,
     )
+    # users = await api.qq.query.get_group_member_list(event.group_id)
+    # group_notes = await api.qq.query.get_group_notice(event.group_id)
+    # print(group_notes)
+
+    # shut = await api.qq.query.get_group_shut_list(event.group_id)
+    # print(shut)
+
+    # info = await api.qq.query.get_group_info_ex(event.group_id)
+    # print(info)
+
     # file_list = await api.qq.query.get_group_root_files(event.group_id)
     # for f in file_list.files or []:
     #     print(f"  📄 {f.file_name}  (ID: {f.file_id}, 大小: {f.file_size} bytes)")

@@ -33,8 +33,7 @@ from ..model import (  # noqa: TID252
 )
 from .client import send_message
 
-# MESSAGE_END_CHARS = frozenset(("\u3002", "\uff01", "\uff1f", "!", "?", "\n"))
-MESSAGE_END_CHARS = frozenset("qwoeiuqwoeiuqowieu")
+MESSAGE_SEPARATOR = "\n\n"
 
 ROOT_AGENT_NAMES = frozenset(agent_name.value for agent_name in RootAgentName)
 SUPPRESS_FINAL_TEXT_TOOLS = ["text_to_speech"]
@@ -269,7 +268,7 @@ class SnapBotAgentService:
         excluded_subagents: list[SubAgentName] | None = None,
         excluded_tools: list[str] | None = None,
     ) -> None:
-        text_chunks: list[str] = []
+        text_buffer = ""
         sent_image_hashes: set[str] = set()
         suppress_text = False
         resume = await self._resolve_pending_interrupts(event, config, message)
@@ -283,15 +282,19 @@ class SnapBotAgentService:
         )
 
         async def flush_text() -> None:
-            if text_chunks:
-                await send_message(self.api, event, "".join(text_chunks))
-                text_chunks.clear()
+            nonlocal text_buffer
+            if text_buffer:
+                await send_message(self.api, event, text_buffer)
+                text_buffer = ""
 
         async def append_text(delta: str) -> None:
-            for char in delta:
-                text_chunks.append(char)
-                if char in MESSAGE_END_CHARS:
-                    await flush_text()
+            nonlocal text_buffer
+            text_buffer += delta
+
+            while MESSAGE_SEPARATOR in text_buffer:
+                text, text_buffer = text_buffer.split(MESSAGE_SEPARATOR, maxsplit=1)
+                if text:
+                    await send_message(self.api, event, text)
 
         async for stream_event in self.agent_adapter.astream_agent_events(
             agent,
@@ -306,7 +309,7 @@ class SnapBotAgentService:
             elif isinstance(stream_event, ToolCallStartEvent):
                 if stream_event.tool_call_name in SUPPRESS_FINAL_TEXT_TOOLS:
                     suppress_text = True
-                    text_chunks.clear()
+                    text_buffer = ""
 
             elif isinstance(stream_event, CustomEvent):
                 await flush_text()
