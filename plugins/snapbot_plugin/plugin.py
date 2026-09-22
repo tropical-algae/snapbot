@@ -8,7 +8,7 @@ from snapbot.core.agent.registry import AgentRegistry
 from .model import SnapBotPluginConfig
 from .service.agent import SnapBotAgentService
 from .service.file_cleanup import SentFileCleanupService
-from .service.group import handle_group_agent_message, handle_reset_memory, handle_test_action
+from .service.group import handle_group_agent_message, handle_reset_memory
 
 
 class SnapBotPlugin(NcatBotPlugin):
@@ -57,10 +57,10 @@ class SnapBotPlugin(NcatBotPlugin):
             self.snapbot_config.get_group(event.group_id),
         )
 
-    @registrar.on_group_command("/test")
-    async def on_send_emoji(self, event: GroupMessageEvent) -> None:
-        await handle_test_action(
-            self.api,
-            event,
-            self.snapbot_config.get_group(event.group_id),
-        )
+    # @registrar.on_group_command("/test")
+    # async def on_send_emoji(self, event: GroupMessageEvent) -> None:
+    #     await handle_test_action(
+    #         self.api,
+    #         event,
+    #         self.snapbot_config.get_group(event.group_id),
+    #     )
