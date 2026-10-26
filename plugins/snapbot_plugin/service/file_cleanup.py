@@ -15,7 +15,7 @@ class ScheduledTaskHost(Protocol):
     def add_scheduled_task(
         self,
         name: str,
-        interval: str | int | float,
+        interval: str | float,
         conditions: list[Callable[[], bool]] | None = None,
         max_runs: int | None = None,
         callback: Callable[[], object] | None = None,
@@ -27,7 +27,7 @@ class SentFileCleanupService:
         self,
         api: BotAPIClient,
         task_host: ScheduledTaskHost,
-        delete_delay: str | int | float,
+        delete_delay: str | float,
         enabled: bool = True,
     ) -> None:
         self.api = api
